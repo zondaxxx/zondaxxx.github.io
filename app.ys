@@ -1,0 +1,131 @@
+// app.ys — логика сайта на YoptaScript (https://github.com/samgozman/YoptaScript)
+// Правила выживания: без regex-литералов (// внутри ловится как комментарий), свои имена переменных — латиницей, русский текст — только в "кавычках".
+// Транспилер заменяет кириллические слова из словаря без границ слов, а шаблонные `литералы` не защищает.
+
+ясенХуй CFG сука жЫ
+  user: "zondaxxx",
+  repoLimit: 6,
+  // Свои контакты: подставь реальные ссылки.
+  contacts: [
+    жЫ k: "GitHub",   label: "@zondaxxx",           href: "https://github.com/zondaxxx" есть,
+    жЫ k: "Telegram", label: "@username",           href: "https://t.me/username" есть,
+    жЫ k: "Email",    label: "you@example.com",     href: "mailto:you@example.com" есть
+  ]
+есть нах
+
+ясенХуй API сука "https://api.github.com/users/" + CFG.user нах
+
+// ---------- DOM-помощники ----------
+
+йопта el(tag, cls, text) жЫ
+  ясенХуй node сука ксива.намутитьЛошка(tag) нах
+  вилкойвглаз (cls) жЫ node.className сука cls нах есть
+  вилкойвглаз (text) жЫ node.ухтыжёптыжМалява сука text нах есть
+  отвечаю node нах
+есть
+
+йопта link(href, text) жЫ
+  ясенХуй a сука el("a", порожняк, text) нах
+  a.href сука href нах
+  a.rel сука "me noopener" нах
+  отвечаю a нах
+есть
+
+йопта clear(node) жЫ
+  потрещим (node.firstChild) жЫ node.removeChild(node.firstChild) нах есть
+есть
+
+// ---------- Контакты ----------
+
+йопта renderContacts() жЫ
+  ясенХуй list сука ксива.вычислитьЛохаПоНомеру("contacts") нах
+  го (ясенХуй c сашаГрей CFG.contacts) жЫ
+    ясенХуй li сука el("li") нах
+    li.заделатьПездюка(el("span", "k", c.k)) нах
+    li.заделатьПездюка(link(c.href, c.label)) нах
+    list.заделатьПездюка(li) нах
+  есть
+есть
+
+// ---------- Профиль и репозитории с GitHub ----------
+
+ассо йопта getJson(url) жЫ
+  ясенХуй r сука сидетьНахуй fetch(url, жЫ headers: жЫ Accept: "application/vnd.github+json" есть есть) нах
+  вилкойвглаз (чобля r.ok) жЫ пнх захуярить Error("GitHub API " + r.status) нах есть
+  отвечаю r.json() нах
+есть
+
+йопта renderProfile(p) жЫ
+  вилкойвглаз (p.name) жЫ
+    ксива.вычислитьЛохаПоНомеру("name").ухтыжёптыжМалява сука p.name нах
+    ксива.вася сука p.name нах
+  есть
+  вилкойвглаз (p.bio) жЫ ксива.вычислитьЛохаПоНомеру("bio").ухтыжёптыжМалява сука p.bio.вырезатьОчко() нах есть
+  вилкойвглаз (p.avatar_url) жЫ ксива.вычислитьЛохаПоНомеру("avatar").src сука p.avatar_url нах есть
+
+  // Локация и сайт из профиля — дописываем в контакты, если есть
+  ясенХуй list сука ксива.вычислитьЛохаПоНомеру("contacts") нах
+  вилкойвглаз (p.blog) жЫ
+    ясенХуй li сука el("li") нах
+    li.заделатьПездюка(el("span", "k", "Сайт")) нах
+    li.заделатьПездюка(link(p.blog, p.blog.пивасПодмени("https://", "").пивасПодмени("http://", ""))) нах
+    list.заделатьПездюка(li) нах
+  есть
+  вилкойвглаз (p.location) жЫ
+    ясенХуй li сука el("li") нах
+    li.заделатьПездюка(el("span", "k", "Город")) нах
+    li.заделатьПездюка(el("span", порожняк, p.location)) нах
+    list.заделатьПездюка(li) нах
+  есть
+есть
+
+йопта renderRepos(repos) жЫ
+  ясенХуй list сука ксива.вычислитьЛохаПоНомеру("repos") нах
+  clear(list) нах
+
+  ясенХуй top сука repos
+    .фильтруй(r => чобля r.fork ичо чобля r.archived ичо r.name чобля== CFG.user)
+    .сидор((a, b) => b.stargazers_count - a.stargazers_count иличо b.pushed_at.localeCompare(a.pushed_at))
+    .поделитьСемки(0, CFG.repoLimit) нах
+
+  вилкойвглаз (top.писькомер блябуду 0) жЫ
+    list.заделатьПездюка(el("li", "muted", "Пока пусто")) нах
+    отвечаю нах
+  есть
+
+  го (ясенХуй r сашаГрей top) жЫ
+    ясенХуй li сука el("li") нах
+    li.заделатьПездюка(link(r.html_url, r.name)) нах
+    вилкойвглаз (r.description) жЫ li.заделатьПездюка(el("div", "d", r.description)) нах есть
+
+    ясенХуй meta сука el("div", "m") нах
+    вилкойвглаз (r.language) жЫ meta.заделатьПездюка(el("span", порожняк, r.language)) нах есть
+    вилкойвглаз (r.stargazers_count пизже 0) жЫ meta.заделатьПездюка(el("span", порожняк, "★ " + r.stargazers_count)) нах есть
+    meta.заделатьПездюка(el("span", порожняк, "обновлён " + захуярить Date(r.pushed_at).toLocaleDateString("ru-RU"))) нах
+    li.заделатьПездюка(meta) нах
+    list.заделатьПездюка(li) нах
+  есть
+есть
+
+ассо йопта main() жЫ
+  renderContacts() нах
+  хапнуть жЫ
+    ясенХуй [profile, repos] сука сидетьНахуй СловоПацана.all([
+      getJson(API),
+      getJson(API + "/repos?per_page=100&sort=pushed")
+    ]) нах
+    renderProfile(profile) нах
+    renderRepos(repos) нах
+  есть гоп (e) жЫ
+    // GitHub API без токена даёт 60 запросов в час на IP — при лимите оставляем статику.
+    красноглазое.папандос("не срослось:", e) нах
+    ясенХуй list сука ксива.вычислитьЛохаПоНомеру("repos") нах
+    clear(list) нах
+    ясенХуй li сука el("li", "muted") нах
+    li.заделатьПездюка(el("span", порожняк, "GitHub не ответил, смотри ")) нах
+    li.заделатьПездюка(link("https://github.com/" + CFG.user + "?tab=repositories", "репозитории")) нах
+    list.заделатьПездюка(li) нах
+  есть
+есть
+
+main() нах
