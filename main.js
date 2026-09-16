@@ -121,7 +121,7 @@ function clothTexture(base, seed) {
     for (let x = 3; x < w; x += 9) g.fillRect(x, 0, 2, h);
     g.fillStyle = 'rgba(255,255,255,.08)';
     for (let x = 6; x < w; x += 9) g.fillRect(x, 0, 1, h);
-  });
+  }, 3);
 }
 const CLOTHS = {
   black: clothTexture([22, 21, 25], 7),
@@ -315,7 +315,7 @@ scene.add(floor);
 const char = new THREE.Group();
 scene.add(char);
 
-const robeGeo = new THREE.CylinderGeometry(0.42, 0.8, 1.72, 9, 4);
+const robeGeo = new THREE.CylinderGeometry(0.42, 0.7, 1.72, 9, 4);
 {
   const p = robeGeo.attributes.position;
   let s = 5; const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
@@ -372,7 +372,7 @@ head.add(eyes);
 
 function arm(side) {
   const pivot = new THREE.Group();
-  pivot.position.set(0.44 * side, 1.62, 0);
+  pivot.position.set(0.46 * side, 1.62, 0.06);
   const geo = new THREE.CylinderGeometry(0.11, 0.15, 0.78, 6);
   geo.translate(0, -0.39, 0);
   pivot.add(new THREE.Mesh(geo, MAT.cloth));
@@ -443,7 +443,7 @@ const ALT = {};
   const cow = new THREE.Group();
   box(1.5, 0.72, 0.7, MAT.cow, 0, 0.98, 0, cow);
   const legs = [];
-  [[-0.55, 0.22], [-0.55, -0.22], [0.55, 0.22], [0.55, -0.22]].forEach(([x, z]) => legs.push(box(0.18, 0.64, 0.18, MAT.cow, x, 0.32, z, cow)));
+  [[-0.55, 0.22], [-0.55, -0.22], [0.55, 0.22], [0.55, -0.22]].forEach(([x, z]) => { const geo = new THREE.BoxGeometry(0.18, 0.64, 0.18); geo.translate(0, -0.32, 0); const l = new THREE.Mesh(geo, MAT.cow); l.position.set(x, 0.66, z); cow.add(l); legs.push(l); });
   const cowHead = new THREE.Group(); cowHead.position.set(0.95, 1.18, 0); cow.add(cowHead);
   box(0.46, 0.42, 0.42, MAT.cow, 0, 0, 0, cowHead);
   box(0.22, 0.22, 0.34, MAT.pink, 0.3, -0.1, 0, cowHead);
@@ -689,8 +689,8 @@ const HUMAN_ANIM = {
   },
   statham(h, t, dt) { // стоит, руки скрещены, хрустит шеей, медленно наступает
     const u = h.userData;
-    u.arms[0].rotation.set(-1.25, 0, 0.55); u.arms[1].rotation.set(-1.25, 0, -0.55);
-    u.arms[0].position.z = 0.1; u.arms[1].position.z = 0.1;
+    u.arms[0].rotation.set(-1.2, 0, 0.6); u.arms[1].rotation.set(-1.2, 0, -0.6);
+    u.arms[0].position.z = 0.24; u.arms[1].position.z = 0.24;
     u.legs[0].rotation.x = 0; u.legs[1].rotation.x = 0;
     const c = (t % 3.2) / 3.2;
     u.head.rotation.z = c < 0.12 ? -0.3 * bell(c / 0.12) : c > 0.5 && c < 0.62 ? 0.3 * bell((c - 0.5) / 0.12) : 0;
@@ -799,32 +799,33 @@ function resize() {
    Позы, жесты, действия
    ========================================================= */
 // поза = углы рук + добавки к голове/телу. Текущая плавно догоняет целевую.
-const P0 = () => ({ lx: 0.12, ly: 0, lz: 0.28, rx: -1.35, ry: 0, rz: -0.25, hx: 0, hy: 0, hz: 0, by: 0, bz: 0, yaw: 0, look: 1 });
+const LZ = 0.5;
+const P0 = () => ({ lx: 0.12, ly: 0, lz: LZ, rx: -1.35, ry: 0, rz: -0.25, hx: 0, hy: 0, hz: 0, by: 0, bz: 0, yaw: 0, look: 1 });
 const pose = P0();
 
 // базовая поза зависит от того, что в руке
 const BASE = {
-  knife: { rx: -1.35, rz: -0.25, lx: 0.12, lz: 0.28 },
+  knife: { rx: -1.35, rz: -0.25, lx: 0.12, lz: LZ },
   ak:    { rx: -1.2, rz: -0.15, lx: -1.0, lz: -0.6 },
-  phone: { rx: -2.55, rz: -0.15, lx: 0.12, lz: 0.28, hz: 0.18, hy: -0.15 },
-  none:  { rx: 0.12, rz: -0.28, lx: 0.12, lz: 0.28 },
+  phone: { rx: -2.55, rz: -0.15, lx: 0.12, lz: LZ, hz: 0.18, hy: -0.15 },
+  none:  { rx: 0.12, rz: -LZ, lx: 0.12, lz: LZ },
 };
 
 // жесты: fn(k, T) пишет в T (k = 0..1 прогресс). dur в секундах
 const bell = (k) => Math.sin(Math.PI * Math.min(1, Math.max(0, k)));       // 0→1→0
 const ease = (k) => k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
 const GESTURES = {
-  wave:   { dur: 2.4, fn: (k, T) => { const e = bell(k); T.lz = 0.28 + e * 2.5 + Math.sin(k * Math.PI * 7) * 0.35 * e; T.hz = 0.15 * e; } },
-  shrug:  { dur: 1.8, fn: (k, T) => { const e = bell(k); T.lz = 0.28 + 0.75 * e; T.rz = T.rz - 0.7 * e; T.lx = -0.4 * e; T.rx = T.rx * (1 - e) - 0.4 * e; T.hz = 0.22 * e; T.by = 0.04 * e; } },
+  wave:   { dur: 2.4, fn: (k, T) => { const e = bell(k); T.lz = LZ + e * 2.5 + Math.sin(k * Math.PI * 7) * 0.35 * e; T.hz = 0.15 * e; } },
+  shrug:  { dur: 1.8, fn: (k, T) => { const e = bell(k); T.lz = LZ + 0.75 * e; T.rz = T.rz - 0.7 * e; T.lx = -0.4 * e; T.rx = T.rx * (1 - e) - 0.4 * e; T.hz = 0.22 * e; T.by = 0.04 * e; } },
   look:   { dur: 2.8, fn: (k, T) => { T.look = 0; T.hy = Math.sin(k * Math.PI * 2) * 0.9; T.hx = 0.05; } },
   inspect:{ dur: 2.6, fn: (k, T) => { const e = bell(k); T.rx = T.rx * (1 - e) - 2.15 * e; T.rz = T.rz * (1 - e) + 0.4 * e; T.hx = 0.35 * e; T.hy = -0.25 * e; T.look = 1 - e; } },
   point:  { dur: 1.8, fn: (k, T) => { const e = bell(k); T.rx = T.rx * (1 - e) - 1.62 * e; T.rz = T.rz * (1 - e) - 0.05 * e; T.hx = -0.1 * e; } },
   nod:    { dur: 1.6, fn: (k, T) => { T.hx = Math.sin(k * Math.PI * 4) * 0.22 * bell(k); } },
   no:     { dur: 1.6, fn: (k, T) => { T.hy = Math.sin(k * Math.PI * 5) * 0.35 * bell(k); T.look = 0.3; } },
-  tpose:  { dur: 2.2, fn: (k, T) => { const e = bell(k); T.lz = 0.28 + (1.57 - 0.28) * e; T.rz = T.rz * (1 - e) - 1.57 * e; T.lx = T.lx * (1 - e); T.rx = T.rx * (1 - e); T.hx = 0; } },
+  tpose:  { dur: 2.2, fn: (k, T) => { const e = bell(k); T.lz = LZ + (1.57 - 0.28) * e; T.rz = T.rz * (1 - e) - 1.57 * e; T.lx = T.lx * (1 - e); T.rx = T.rx * (1 - e); T.hx = 0; } },
   spin:   { dur: 1.3, fn: (k, T) => { T.yaw = ease(k) * Math.PI * 2; T.by = 0.06 * bell(k); T.look = 0; } },
-  crouch: { dur: 2.0, fn: (k, T) => { const e = bell(k); T.by = -0.22 * e; T.hx = -0.2 * e; T.lz = 0.28 + 0.3 * e; } },
-  dance:  { dur: 3.0, fn: (k, T) => { const e = bell(k); const w = k * Math.PI * 6; T.by = Math.abs(Math.sin(w)) * 0.06 * e; T.hz = Math.sin(w) * 0.2 * e; T.lz = 0.28 + (0.6 + Math.sin(w) * 0.5) * e; T.rz = T.rz - (0.6 - Math.sin(w) * 0.5) * e; T.yaw = Math.sin(w / 2) * 0.35 * e; } },
+  crouch: { dur: 2.0, fn: (k, T) => { const e = bell(k); T.by = -0.22 * e; T.hx = -0.2 * e; T.lz = LZ + 0.3 * e; } },
+  dance:  { dur: 3.0, fn: (k, T) => { const e = bell(k); const w = k * Math.PI * 6; T.by = Math.abs(Math.sin(w)) * 0.06 * e; T.hz = Math.sin(w) * 0.2 * e; T.lz = LZ + (0.6 + Math.sin(w) * 0.5) * e; T.rz = T.rz - (0.6 - Math.sin(w) * 0.5) * e; T.yaw = Math.sin(w / 2) * 0.35 * e; } },
 };
 // жесты, которые не сочетаются с тем, что в руке
 const GESTURE_BLOCK = { ak: ['inspect', 'point', 'tpose', 'dance'], phone: ['inspect', 'point', 'tpose', 'shrug', 'dance'] };
@@ -861,7 +862,7 @@ const ACTIONS = {
     if (shot !== A.shot && shot < 3) { A.shot = shot; camShake = 0.07; }
   } },
   hangup: { dur: 1.2, fn: (k, T) => { const e = bell(k); T.rx = -2.55 + 1.3 * e; T.rz = -0.15 - 0.5 * e; T.hz = 0.18 - 0.4 * e; T.hx = 0.2 * e; } },
-  punch:  { dur: 0.45, fn: (k, T) => { const e = bell(k) ** 1.5; T.rx = 0.12 - 1.75 * e; T.rz = -0.28 + 0.2 * e; T.bz = 0.2 * e; T.hx = -0.15 * e; } },
+  punch:  { dur: 0.45, fn: (k, T) => { const e = bell(k) ** 1.5; T.rx = 0.12 - 1.75 * e; T.rz = -LZ + 0.3 * e; T.bz = 0.2 * e; T.hx = -0.15 * e; } },
 };
 
 function swapVariant(kind, value) {
@@ -913,8 +914,8 @@ const EVENTS = {
     start() { [[-1.7, 0.6], [1.7, 0.4], [-0.9, -1.6], [1.1, -1.8]].forEach(([dx, dz]) => { const a = actor(); const c = a.clone(true); c.position.set(a.position.x + dx, 0, dz); c.rotation.y = a.rotation.y + rand(-0.6, 0.6); scene.add(c); clones.push(c); }); },
     frame(k, T, t) { clones.forEach((c, i) => { c.position.y = Math.sin(t * 1.4 + i) * 0.02; }); },
     end() { clones.forEach((c) => scene.remove(c)); clones = []; } },
-  float:     { dur: 4.5, frame(k, T) { T.y = 0.9 + Math.sin(k * Math.PI * 3) * 0.15; T.yaw = ease(k) * Math.PI * 2; } },
-  fall:      { dur: 3.2, solo: true, frame(k, T) { T.rx = k < 0.75 ? Math.PI / 2 : 0; evtRate = k < 0.15 ? 12 : 5; } },
+  float:     { dur: 4.5, frame(k, T) { T.y = 0.5 + Math.sin(k * Math.PI * 3) * 0.12; T.yaw = ease(k) * Math.PI * 2; } },
+  fall:      { dur: 3.2, solo: true, frame(k, T) { const d = k < 0.75; T.rx = d ? -Math.PI / 2 : 0; T.y = d ? 0.18 : 0; T.z = d ? 0.9 : 0; evtRate = k < 0.15 ? 12 : 5; } },
   spinhead:  { dur: 2.2, solo: true, frame(k, T) { T.headSpin = ease(k) * Math.PI * 4; } },
   sink:      { dur: 3.2, solo: true, frame(k, T) { T.y = -2.0 * bell(k); } },
   disco:     { dur: 4.5, start() { startGesture('dance'); }, frame(k, T, t) { const h = (t * 1.5) % 1; postMat.uniforms.uTint.value.set(0.7 + 0.6 * Math.abs(Math.sin(h * Math.PI * 2)), 0.7 + 0.6 * Math.abs(Math.sin(h * Math.PI * 2 + 2.1)), 0.7 + 0.6 * Math.abs(Math.sin(h * Math.PI * 2 + 4.2))); }, end() { postMat.uniforms.uTint.value.set(1, 1, 1); } },
