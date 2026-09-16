@@ -9,8 +9,8 @@ const CONFIG = {
   tagline: "> WHAT'S YOUR FAVORITE SCARY MOVIE?",
   contacts: [
     { label: 'GITHUB',   value: '@zondaxxx',          href: 'https://github.com/zondaxxx' },
-    { label: 'TELEGRAM', value: '@username',          href: 'https://t.me/username' },       // TODO: свой ник
-    { label: 'EMAIL',    value: 'you@example.com',    href: 'mailto:you@example.com' },      // TODO: своя почта
+    { label: 'TELEGRAM', value: '@nyanzondaxxx',       href: 'https://t.me/nyanzondaxxx' },
+    { label: 'EMAIL',    value: 'appledev071@gmail.com', href: 'mailto:appledev071@gmail.com' },
     { label: 'LINKS',    value: 'guns.lol/zondaxxx',  href: 'https://guns.lol/zondaxxx' },
   ],
   // рендер-разрешение «PS1» (короткая сторона), меньше = грубее
