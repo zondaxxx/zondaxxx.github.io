@@ -544,38 +544,7 @@ const HUMANS = {};
     torso: suit, arm: flat('#141416'), hand: flat(tp.s), leg: flat('#111114'), shoe: flat('#0a0a0a'), neck: 0.04,
   });
 
-  // ---- Лара Крофт (1996): треугольные сиськи, коса, два пистолета
-  const lp = { s: '#d9a884', h: '#4a2a14', k: '#141414', w: '#f2ece2', b: '#5a3a24', l: '#a8463c', d: '#b8865f' };
-  const laraFace = pixTex(16, 16, [
-    'hhhhhhhhhhhhhhhh', 'hhhhhhhhhhhhhhhh', 'hhsssssssssssshh', 'hsssssssssssssh'.padEnd(16, 'h'),
-    'ssbbbbssssbbbbss', 'ssssssssssssssss', 'sswkksssssskkwss', 'ssssssssssssssss',
-    'sssssssddsssssss', 'ssssssssssssssss', 'sssssllllllsssss', 'ssssssssssssssss',
-    'ssssssssssssssss', 'ssssssssssssssss', 'ssssssssssssssss', 'ssssssssssssssss',
-  ], lp);
-  const laraSide = pixTex(16, 16, ['h'.repeat(16), 'h'.repeat(16), 'h'.repeat(16), 'hhhhhhhhhhhhssss'].concat(Array(12).fill('s'.repeat(16))), lp);
-  const teal = flat('#1f9a8c'), brown = flat(lp.b), gun = flat('#2a2a2e');
-  const lara = humanoid({
-    dims: { head: [0.34, 0.4, 0.34], torso: [0.5, 0.7, 0.26], arm: [0.15, 0.7, 0.15], leg: [0.2, 0.9, 0.2] },
-    face: laraFace, side: laraSide, top: flat(lp.h), skin: flat(lp.s),
-    torso: teal, arm: flat(lp.s), hand: flat(lp.s), leg: flat(lp.s), shoe: brown, neck: 0.04,
-  });
-  {
-    const u = lara.userData, T = u.torso;
-    const add = (parent, geo, mat, x, y, z, rx = 0) => { const m = new THREE.Mesh(geo, mat.isTexture ? ps1(mat) : mat); m.position.set(x, y, z); m.rotation.x = rx; parent.add(m); return m; };
-    // грудь — две четырёхгранные пирамиды вперёд
-    [-1, 1].forEach((sd) => { const c = add(T, new THREE.ConeGeometry(0.17, 0.42, 4), teal, 0.14 * sd, 0.16, 0.13 + 0.17, Math.PI / 2); c.rotation.z = Math.PI / 4; });
-    // шорты + ремень
-    add(T, new THREE.BoxGeometry(0.54, 0.22, 0.3), brown, 0, -0.42, 0);
-    add(T, new THREE.BoxGeometry(0.56, 0.05, 0.32), flat('#2e1c10'), 0, -0.33, 0);
-    // кобуры на бёдрах
-    u.legs.forEach((leg, i) => add(leg, new THREE.BoxGeometry(0.07, 0.16, 0.12), flat('#3a2416'), (i ? 1 : -1) * 0.13, -0.28, 0.02));
-    // пистолеты в руках
-    u.arms.forEach((arm) => add(arm, new THREE.BoxGeometry(0.05, 0.08, 0.22), gun, 0, -0.62, 0.1));
-    // коса
-    const braid = new THREE.Group(); braid.position.set(0, 0.32, -0.17); u.head.add(braid); u.braid = braid;
-    for (let i = 0; i < 6; i++) add(braid, new THREE.BoxGeometry(0.07 - i * 0.004, 0.13, 0.07 - i * 0.004), flat(lp.h), 0, -0.05 - i * 0.12, -0.02 - i * 0.015);
-  }
-  HUMANS.lara = lara;
+  HUMANS.lara = laraModel();
 
   for (const k in HUMANS) { HUMANS[k].visible = false; scene.add(HUMANS[k]); }
 }
@@ -611,6 +580,80 @@ function humanoid(o) {
   g.userData = { legs, arms, head, torso, punchT: -1 };
   return g;
 }
+// ---- Лара Крофт как в TR1: гранёная, с рюкзаком и угловатой грудью
+function laraModel() {
+  const g = new THREE.Group();
+  const P = { skin: '#d3a377', top: '#9dbdbd', shorts: '#6b4b2c', hair: '#3a2314', strap: '#4a2e1a', boot: '#5a3a22', sock: '#e8e2d2', gun: '#2a2a2e', belt: '#3a2416' };
+  const cache = {};
+  const m = (hex) => cache[hex] || (cache[hex] = ps1(flat(hex)));
+  const mesh = (geo, mat, x = 0, y = 0, z = 0) => { const o = new THREE.Mesh(geo, mat); o.position.set(x, y, z); return o; };
+  const cyl = (rt, rb, h, sx = 1, sz = 1, ty = 0) => { const geo = new THREE.CylinderGeometry(rt, rb, h, 6); geo.scale(sx, 1, sz); geo.translate(0, ty, 0); return geo; };
+  const legH = 0.92, torsoH = 0.62;
+
+  // ноги: бедро + голень + носок + ботинок, кобура на бедре
+  const legs = [-1, 1].map((sd) => {
+    const p = new THREE.Group(); p.position.set(sd * 0.13, legH, 0);
+    p.add(mesh(cyl(0.11, 0.09, 0.46, 1, 1, -0.23), m(P.skin)));
+    p.add(mesh(cyl(0.09, 0.07, 0.42, 1, 1, -0.67), m(P.skin)));
+    p.add(mesh(cyl(0.078, 0.078, 0.09), m(P.sock), 0, -0.74, 0));
+    p.add(mesh(new THREE.BoxGeometry(0.16, 0.17, 0.25), m(P.boot), 0, -legH + 0.085, 0.03));
+    p.add(mesh(new THREE.BoxGeometry(0.07, 0.17, 0.12), m(P.strap), sd * 0.1, -0.2, 0.02));
+    g.add(p); return p;
+  });
+
+  // торс: гранёный, сверху шире; шорты; ремень
+  const torso = new THREE.Group(); torso.position.y = legH; g.add(torso);
+  torso.add(mesh(cyl(0.25, 0.17, torsoH, 1.25, 0.7, torsoH / 2), m(P.top)));
+  torso.add(mesh(cyl(0.19, 0.21, 0.22, 1.3, 0.8, 0.06), m(P.shorts)));
+  torso.add(mesh(cyl(0.2, 0.2, 0.045, 1.35, 0.85, 0.18), m(P.belt)));
+  // грудь — две гранёные пирамиды, слитые в один угловатый блок
+  [-1, 1].forEach((sd) => {
+    const c = mesh(new THREE.ConeGeometry(0.19, 0.4, 4), m(P.top), 0.12 * sd, torsoH * 0.7, 0.14);
+    c.rotation.set(Math.PI / 2, 0, Math.PI / 4); torso.add(c);
+  });
+  // лямки рюкзака и рюкзак
+  [-1, 1].forEach((sd) => { const st = mesh(new THREE.BoxGeometry(0.06, 0.5, 0.03), m(P.strap), 0.13 * sd, torsoH * 0.62, 0.2); st.rotation.z = -sd * 0.12; torso.add(st); });
+  torso.add(mesh(new THREE.BoxGeometry(0.34, 0.36, 0.16), m(P.strap), 0, torsoH * 0.62, -0.2));
+  torso.add(mesh(cyl(0.065, 0.075, 0.1), m(P.skin), 0, torsoH + 0.03, 0));
+
+  // голова: гранёная сфера с лицом, коса
+  const head = new THREE.Group(); head.position.y = legH + torsoH + 0.06; g.add(head);
+  const face = canvasTex(64, 64, (c) => {
+    const S = P.skin;
+    c.fillStyle = P.hair; c.fillRect(0, 0, 64, 64);
+    c.fillStyle = S; c.fillRect(6, 12, 20, 44); c.fillRect(0, 54, 64, 10);
+    // волосы зачёсаны назад — лоб треугольником
+    c.fillStyle = P.hair; c.beginPath(); c.moveTo(6, 12); c.lineTo(26, 12); c.lineTo(16, 17); c.closePath(); c.fill();
+    // брови (сердитые)
+    c.fillStyle = '#2a1608'; c.fillRect(8, 22, 6, 2); c.fillRect(18, 22, 6, 2); c.fillRect(13, 23, 2, 2); c.fillRect(17, 23, 2, 2);
+    // глаза — большие, миндалевидные
+    c.fillStyle = '#f4efe6'; c.fillRect(8, 26, 6, 4); c.fillRect(18, 26, 6, 4);
+    c.fillStyle = '#5a3418'; c.fillRect(10, 26, 3, 4); c.fillRect(19, 26, 3, 4);
+    c.fillStyle = '#111'; c.fillRect(11, 27, 1, 2); c.fillRect(20, 27, 1, 2);
+    // нос
+    c.fillStyle = '#b8895f'; c.fillRect(15, 32, 2, 6); c.fillRect(14, 37, 4, 2);
+    // губы — крупные, тёмно-коричневые
+    c.fillStyle = '#7a3a2a'; c.fillRect(11, 43, 10, 2); c.fillRect(12, 45, 8, 2);
+    c.fillStyle = '#a45040'; c.fillRect(12, 44, 8, 1);
+  });
+  const hg = new THREE.SphereGeometry(0.21, 6, 5); hg.scale(0.92, 1.22, 0.98);
+  const hm = new THREE.Mesh(hg, ps1(face)); hm.position.y = 0.2; hm.rotation.y = -Math.PI / 2 + Math.PI / 2; head.add(hm);
+  const braid = new THREE.Group(); braid.position.set(0, 0.3, -0.16); head.add(braid);
+  for (let i = 0; i < 7; i++) braid.add(mesh(cyl(0.035 - i * 0.002, 0.03 - i * 0.002, 0.12), m(P.hair), 0, -0.05 - i * 0.11, -0.03 - i * 0.012));
+
+  // руки: плечо + предплечье + кисть + пистолет
+  const arms = [-1, 1].map((sd) => {
+    const p = new THREE.Group(); p.position.set(sd * 0.3, legH + torsoH - 0.04, 0);
+    p.add(mesh(cyl(0.075, 0.065, 0.34, 1, 1, -0.17), m(P.skin)));
+    p.add(mesh(cyl(0.065, 0.055, 0.32, 1, 1, -0.5), m(P.skin)));
+    p.add(mesh(new THREE.BoxGeometry(0.09, 0.1, 0.09), m(P.skin), 0, -0.7, 0));
+    p.add(mesh(new THREE.BoxGeometry(0.05, 0.08, 0.22), m(P.gun), 0, -0.72, 0.1));
+    g.add(p); return p;
+  });
+  g.userData = { legs, arms, head, torso, braid, punchT: -1 };
+  return g;
+}
+
 // idle-анимации гуманоидов
 const HUMAN_ANIM = {
   cj(h, t, dt) { // походка на месте, покачивание
@@ -633,8 +676,8 @@ const HUMAN_ANIM = {
   lara(h, t, dt) { // стойка с пистолетами, отдача, бэкфлип
     const u = h.userData;
     const kick0 = bell(((t * 1.6) % 1) / 0.35), kick1 = bell((((t * 1.6) + 0.5) % 1) / 0.35);
-    u.arms[0].rotation.set(-0.9 - 0.35 * kick0 + Math.sin(t * 2) * 0.04, 0, -0.5);
-    u.arms[1].rotation.set(-0.9 - 0.35 * kick1 + Math.sin(t * 2 + 1) * 0.04, 0, 0.5);
+    u.arms[0].rotation.set(-0.8 - 0.35 * kick0 + Math.sin(t * 2) * 0.04, 0, -0.22);
+    u.arms[1].rotation.set(-0.8 - 0.35 * kick1 + Math.sin(t * 2 + 1) * 0.04, 0, 0.22);
     u.legs[0].rotation.set(0.18, 0, 0.1); u.legs[1].rotation.set(-0.12, 0, -0.1);
     u.braid.rotation.x = Math.sin(t * 3) * 0.2;
     const c = (t % 4.2) / 4.2, k = c < 0.17 ? c / 0.17 : 0;
