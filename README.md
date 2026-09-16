@@ -32,4 +32,8 @@ GitHub Pages: залить папку как есть (есть `.nojekyll`). Л
 
 Сами по себе: жест каждые `gestureEvery` секунд (wave, shrug, look, inspect, point, nod, no, tpose, spin, crouch, dance), смена модели каждые `swapEvery` секунд.
 Варианты: оружие knife/ak/phone/none, маска classic/bloody/dark, балахон black/blood/bone. Всё в `VARIANTS`/`GESTURES` в `main.js`.
-В консоли есть `GF.swap('weapon','ak')`, `GF.gesture('wave')`, `GF.attack()`.
+В консоли есть `GF.swap('weapon','ak')`, `GF.gesture('wave')`, `GF.attack()`, `GF.event('cow')`.
+
+## Ивенты
+
+Каждые `eventEvery` секунд (клавиша `E` — вручную) случайный прикол с глитч-переходом: nomask (маска пропадает, красные глаза), hoodoff (снимает капюшон), upsidedown, cow, burger, console (превращается в корову / чизбургер / приставку), giant, tiny, bighead, wireframe, invert, static (помехи + смена скина), clones, float, fall, spinhead, sink, disco, jumpscare. Список — `EVENTS` в `main.js`.
