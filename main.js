@@ -486,6 +486,128 @@ const ALT = {};
   for (const k in ALT) { ALT[k].visible = false; scene.add(ALT[k]); }
 }
 
+/* ---------- Гуманоиды из боксов: CJ, Стив, Стэтхэм ---------- */
+function pixTex(w, h, rows, pal) {
+  // rows: строки символов, pal: символ → цвет ('.' = прозрачно не нужно, всё непрозрачно)
+  return canvasTex(w, h, (g) => {
+    rows.forEach((row, y) => { [...row].forEach((ch, x) => { g.fillStyle = pal[ch]; g.fillRect(x, y, 1, 1); }); });
+  });
+}
+const flat = (hex) => canvasTex(2, 2, (g) => { g.fillStyle = hex; g.fillRect(0, 0, 2, 2); });
+const HUMANS = {};
+{
+  // ---- Стив (8×8 лицо как в оригинале)
+  const sp = { h: '#4a2f1b', s: '#c89264', w: '#ffffff', p: '#4c3fa0', n: '#a06a43', m: '#5a3b23' };
+  const steveFace = pixTex(8, 8, ['hhhhhhhh', 'hhhhhhhh', 'hssssssh', 'ssssssss', 'swpsspws', 'sssnnsss', 'ssmmmmss', 'ssssssss'], sp);
+  const steveSide = pixTex(8, 8, ['hhhhhhhh', 'hhhhhhhh', 'hhhhhhhh', 'ssssssss', 'ssssssss', 'ssssssss', 'ssssssss', 'ssssssss'], sp);
+  HUMANS.steve = humanoid({
+    dims: { head: [0.5, 0.5, 0.5], torso: [0.5, 0.75, 0.25], arm: [0.25, 0.75, 0.25], leg: [0.25, 0.75, 0.25] },
+    face: steveFace, side: steveSide, top: flat(sp.h), skin: flat(sp.s),
+    torso: flat('#00a8a8'), arm: flat(sp.s), hand: flat(sp.s), leg: flat('#3c3c8a'), shoe: flat('#6a6a6a'),
+  });
+
+  // ---- CJ (16×16 лицо)
+  const cp = { h: '#111111', s: '#6b4423', w: '#f3efe6', k: '#0a0a0a', d: '#4d2f16' };
+  const cjFace = pixTex(16, 16, [
+    'hhhhhhhhhhhhhhhh', 'hhhhhhhhhhhhhhhh', 'hhhhhhhhhhhhhhhh', 'hhhhhhhhhhhhhhhh',
+    'ssssssssssssssss', 'sshhhssssshhhsss', 'sswwkssssskwwsss', 'ssssssssssssssss',
+    'ssssssdssdssssss', 'sssssssddsssssss', 'ssssssssssssssss', 'ssssshhhhhhsssss',
+    'ssssssssssssssss', 'ssssssshhsssssss', 'sssssshhhhhhssss', 'ssssssshhhhsssss',
+  ], cp);
+  const cjSide = pixTex(16, 16, ['h'.repeat(16), 'h'.repeat(16), 'h'.repeat(16), 'h'.repeat(16), 'h'.repeat(16)].concat(Array(11).fill('s'.repeat(16))), cp);
+  const tank = canvasTex(16, 16, (g) => { g.fillStyle = cp.s; g.fillRect(0, 0, 16, 16); g.fillStyle = '#f3efe6'; g.fillRect(0, 2, 16, 14); g.fillRect(2, 0, 3, 2); g.fillRect(11, 0, 3, 2); });
+  const jeans = canvasTex(16, 16, (g, w, h) => { noise(g, w, h, [58, 79, 138], 24, 61); g.fillStyle = 'rgba(0,0,0,.3)'; g.fillRect(7, 0, 2, h); });
+  HUMANS.cj = humanoid({
+    dims: { head: [0.36, 0.42, 0.36], torso: [0.62, 0.72, 0.32], arm: [0.17, 0.72, 0.17], leg: [0.22, 0.86, 0.22] },
+    face: cjFace, side: cjSide, top: flat(cp.h), skin: flat(cp.s),
+    torso: tank, arm: flat(cp.s), hand: flat(cp.s), leg: jeans, shoe: flat('#e8e8e8'), neck: 0.04,
+  });
+
+  // ---- Стэтхэм (16×16 лицо, лысый, щетина, прищур)
+  const tp = { s: '#d8ab8c', t: '#a58a78', k: '#141414', b: '#2a2622', m: '#a06a5a', e: '#ede6dc' };
+  const stFace = pixTex(16, 16, [
+    'tsssssssssssssst', 'ssssssssssssssss', 'ssssssssssssssss', 'ssssssssssssssss',
+    'ssbbbbssssbbbbss', 'ssssssssssssssss', 'sskkksssssskkkss', 'ssssssssssssssss',
+    'sssssssmmsssssss', 'ssssssssssssssss', 'tsssssssssssssst', 'ttsssmmmmmmsssst',
+    'ttssssssssssssst', 'tttssssssssssstt', 'ttttsssssssstttt', 'tttttttttttttttt',
+  ], tp);
+  const stSide = canvasTex(16, 16, (g, w, h) => { noise(g, w, h, [216, 171, 140], 12, 71); g.fillStyle = 'rgba(60,50,45,.35)'; g.fillRect(0, 10, w, 6); });
+  const suit = canvasTex(16, 16, (g) => {
+    g.fillStyle = '#141416'; g.fillRect(0, 0, 16, 16);
+    g.fillStyle = tp.e; g.beginPath(); g.moveTo(5, 0); g.lineTo(11, 0); g.lineTo(8, 7); g.closePath(); g.fill();
+    g.fillStyle = '#5a1520'; g.fillRect(7, 0, 2, 9); g.fillRect(6, 8, 4, 2);
+    g.fillStyle = '#26262a'; g.fillRect(4, 0, 1, 16); g.fillRect(11, 0, 1, 16);
+  });
+  HUMANS.statham = humanoid({
+    dims: { head: [0.36, 0.42, 0.36], torso: [0.66, 0.72, 0.34], arm: [0.18, 0.72, 0.18], leg: [0.22, 0.86, 0.22] },
+    face: stFace, side: stSide, top: stSide, skin: flat(tp.s),
+    torso: suit, arm: flat('#141416'), hand: flat(tp.s), leg: flat('#111114'), shoe: flat('#0a0a0a'), neck: 0.04,
+  });
+
+  for (const k in HUMANS) { HUMANS[k].visible = false; scene.add(HUMANS[k]); }
+}
+function humanoid(o) {
+  const g = new THREE.Group();
+  const d = o.dims, legH = d.leg[1], torsoH = d.torso[1];
+  const M = (tex) => ps1(tex);
+  const mesh = (geo, mat) => new THREE.Mesh(geo, mat);
+  // ноги (пивот в бедре)
+  const legs = [-1, 1].map((sd) => {
+    const p = new THREE.Group(); p.position.set(sd * d.leg[0] / 2, legH, 0);
+    const geo = new THREE.BoxGeometry(...d.leg); geo.translate(0, -legH / 2, 0);
+    p.add(mesh(geo, M(o.leg)));
+    const shoe = mesh(new THREE.BoxGeometry(d.leg[0] * 1.08, legH * 0.14, d.leg[2] * 1.35), M(o.shoe));
+    shoe.position.set(0, -legH + legH * 0.07, d.leg[2] * 0.12); p.add(shoe);
+    g.add(p); return p;
+  });
+  const torso = mesh(new THREE.BoxGeometry(...d.torso), M(o.torso));
+  torso.position.y = legH + torsoH / 2; g.add(torso);
+  // руки (пивот в плече)
+  const arms = [-1, 1].map((sd) => {
+    const p = new THREE.Group(); p.position.set(sd * (d.torso[0] / 2 + d.arm[0] / 2), legH + torsoH - d.arm[0] / 2, 0);
+    const geo = new THREE.BoxGeometry(d.arm[0], d.arm[1] - d.arm[0] * 0.7, d.arm[2]); geo.translate(0, -(d.arm[1] - d.arm[0] * 0.7) / 2 + d.arm[0] / 2, 0);
+    p.add(mesh(geo, M(o.arm)));
+    const hand = mesh(new THREE.BoxGeometry(d.arm[0], d.arm[0] * 0.7, d.arm[2]), M(o.hand));
+    hand.position.y = -d.arm[1] + d.arm[0] / 2 + d.arm[0] * 0.35; p.add(hand);
+    g.add(p); return p;
+  });
+  // голова: [+x, -x, +y, -y, +z(лицо), -z]
+  const head = new THREE.Group(); head.position.y = legH + torsoH + (o.neck || 0); g.add(head);
+  const hm = mesh(new THREE.BoxGeometry(...d.head), [M(o.side), M(o.side), M(o.top), M(o.skin), M(o.face), M(o.side)]);
+  hm.position.y = d.head[1] / 2; head.add(hm);
+  g.userData = { legs, arms, head, torso, punchT: -1 };
+  return g;
+}
+// idle-анимации гуманоидов
+const HUMAN_ANIM = {
+  cj(h, t, dt) { // походка на месте, покачивание
+    const u = h.userData, w = t * 4.5;
+    u.legs[0].rotation.x = Math.sin(w) * 0.5; u.legs[1].rotation.x = -Math.sin(w) * 0.5;
+    u.arms[0].rotation.x = -Math.sin(w) * 0.45; u.arms[1].rotation.x = Math.sin(w) * 0.45;
+    u.arms[0].rotation.z = 0.12; u.arms[1].rotation.z = -0.12;
+    h.position.y = Math.abs(Math.sin(w)) * 0.05;
+    u.torso.rotation.z = Math.sin(w) * 0.04;
+    u.head.rotation.z = Math.sin(t * 1.3) * 0.08;
+  },
+  steve(h, t, dt) { // майнкрафт: прямые руки, резкий шаг, иногда прыгает
+    const u = h.userData, w = t * 6;
+    u.legs[0].rotation.x = Math.sin(w) * 0.75; u.legs[1].rotation.x = -Math.sin(w) * 0.75;
+    u.arms[0].rotation.x = -Math.sin(w) * 0.75; u.arms[1].rotation.x = Math.sin(w) * 0.75;
+    const j = (t % 2.6) / 2.6;
+    h.position.y = j < 0.25 ? Math.sin(j * Math.PI * 4) * 0.45 : 0;
+    u.head.rotation.z = 0;
+  },
+  statham(h, t, dt) { // стоит, руки скрещены, хрустит шеей, медленно наступает
+    const u = h.userData;
+    u.arms[0].rotation.set(-1.25, 0, 0.55); u.arms[1].rotation.set(-1.25, 0, -0.55);
+    u.arms[0].position.z = 0.1; u.arms[1].position.z = 0.1;
+    u.legs[0].rotation.x = 0; u.legs[1].rotation.x = 0;
+    const c = (t % 3.2) / 3.2;
+    u.head.rotation.z = c < 0.12 ? -0.3 * bell(c / 0.12) : c > 0.5 && c < 0.62 ? 0.3 * bell((c - 0.5) / 0.12) : 0;
+    h.position.y = 0;
+  },
+};
+
 /* =========================================================
    Варианты модели
    ========================================================= */
@@ -493,9 +615,13 @@ const VARIANTS = {
   weapon: ['knife', 'ak', 'phone', 'none'],
   mask: ['classic', 'bloody', 'dark'],
   robe: ['black', 'blood', 'bone'],
+  body: ['ghostface', 'cj', 'steve', 'statham'],
 };
-const current = { weapon: 'knife', mask: 'classic', robe: 'black' };
+const current = { weapon: 'knife', mask: 'classic', robe: 'black', body: 'ghostface' };
+const ACTORS = { ghostface: char, ...HUMANS };
+const actor = () => ACTORS[current.body];
 function applyVariant() {
+  for (const k in ACTORS) ACTORS[k].visible = (k === current.body);
   for (const k in PROPS) PROPS[k].visible = (k === current.weapon);
   MAT.mask.uniforms.uMap.value = MASKS[current.mask];
   MAT.cloth.uniforms.uMap.value = CLOTHS[current.robe];
@@ -629,6 +755,7 @@ function startGesture(name) {
 
 // клик: действие зависит от оружия
 function attack() {
+  if (current.body !== 'ghostface') { actor().userData.punchT = 0; glitchName(); return; }
   if (action) return;
   const map = { knife: 'stab', ak: 'fire', phone: 'hangup', none: 'punch' };
   action = { name: map[current.weapon], t: 0, shot: -1 };
@@ -649,8 +776,9 @@ const ACTIONS = {
 
 function swapVariant(kind, value) {
   if (pendingSwap) return;
-  kind = kind || pick(Object.keys(VARIANTS));
-  value = VARIANTS[kind].includes(value) ? value : pick(VARIANTS[kind], current[kind]);
+  // если на сцене не Ghostface — чаще меняем тело обратно; тело само по себе выпадает реже
+  if (!kind) kind = current.body !== 'ghostface' ? (Math.random() < 0.7 ? 'body' : pick(['weapon', 'mask', 'robe'])) : pick(['weapon', 'mask', 'robe', 'body', 'weapon', 'mask', 'robe']);
+  if (!VARIANTS[kind].includes(value)) value = kind === 'body' ? pick(['ghostface', 'ghostface', 'cj', 'steve', 'statham'].filter((v) => v !== current.body)) : pick(VARIANTS[kind], current[kind]);
   pendingSwap = { kind, value };
   const now = shared.uTime.value;
   glitchUntil = now + 0.45;
@@ -665,7 +793,8 @@ const LOG_NAMES = {
 function logSwap() {
   const el = document.getElementById('log');
   if (!el) return;
-  const nm = `GHOSTFACE_${LOG_NAMES.mask[current.mask]}_${LOG_NAMES.robe[current.robe]}_${LOG_NAMES.weapon[current.weapon]}.TMD`;
+  const bodies = { cj: 'CJ.DFF', steve: 'STEVE.PNG', statham: 'STATHAM.TMD' };
+  const nm = current.body !== 'ghostface' ? bodies[current.body] : `GHOSTFACE_${LOG_NAMES.mask[current.mask]}_${LOG_NAMES.robe[current.robe]}_${LOG_NAMES.weapon[current.weapon]}.TMD`;
   typewriter(el, `> LOADED ${nm}`, 14);
 }
 
@@ -691,7 +820,7 @@ const EVENTS = {
   invert:    { dur: 1.6, start() { postMat.uniforms.uInvert.value = 1; }, end() { postMat.uniforms.uInvert.value = 0; } },
   static:    { dur: 0.9, solo: true, start() { postMat.uniforms.uStatic.value = 1; }, end() { postMat.uniforms.uStatic.value = 0; swapVariant(); } },
   clones:    { dur: 4.5, glitch: true,
-    start() { [[-1.7, 0.6], [1.7, 0.4], [-0.9, -1.6], [1.1, -1.8]].forEach(([dx, dz]) => { const c = char.clone(true); c.position.set(char.position.x + dx, 0, dz); c.rotation.y = char.rotation.y + rand(-0.6, 0.6); scene.add(c); clones.push(c); }); },
+    start() { [[-1.7, 0.6], [1.7, 0.4], [-0.9, -1.6], [1.1, -1.8]].forEach(([dx, dz]) => { const a = actor(); const c = a.clone(true); c.position.set(a.position.x + dx, 0, dz); c.rotation.y = a.rotation.y + rand(-0.6, 0.6); scene.add(c); clones.push(c); }); },
     frame(k, T, t) { clones.forEach((c, i) => { c.position.y = Math.sin(t * 1.4 + i) * 0.02; }); },
     end() { clones.forEach((c) => scene.remove(c)); clones = []; } },
   float:     { dur: 4.5, frame(k, T) { T.y = 0.9 + Math.sin(k * Math.PI * 3) * 0.15; T.yaw = ease(k) * Math.PI * 2; } },
@@ -707,7 +836,9 @@ let nextEventAt = 1e9;
 let lastEvent = null;
 function startEvent(name) {
   if (reduceMotion || event) return;
-  if (!EVENTS[name]) name = pick(Object.keys(EVENTS), lastEvent);
+  const onlyGhost = ['nomask', 'hoodoff'];
+  const okNames = Object.keys(EVENTS).filter((n) => current.body === 'ghostface' || !onlyGhost.includes(n));
+  if (!EVENTS[name] || !okNames.includes(name)) name = pick(okNames, lastEvent);
   lastEvent = name;
   const ev = EVENTS[name];
   event = { name, t: 0, started: false };
@@ -724,7 +855,7 @@ function tickEvent(dt, t, T) {
   if (!event.started && event.t >= delay) {
     event.started = true;
     ev.start?.();
-    if (ev.alt) { char.visible = false; ALT[ev.alt].visible = true; ALT[ev.alt].position.x = char.position.x; }
+    if (ev.alt) { actor().visible = false; ALT[ev.alt].visible = true; ALT[ev.alt].position.x = char.position.x; }
   }
   if (event.started) {
     const k = Math.min(1, (event.t - delay) / ev.dur);
@@ -732,7 +863,7 @@ function tickEvent(dt, t, T) {
     if ((ev.alt || ev.glitch) && event.t >= delay + ev.dur - 0.25 && t > glitchUntil) glitchUntil = t + 0.4;
     if (event.t >= delay + ev.dur) {
       ev.end?.();
-      if (ev.alt) { char.visible = true; ALT[ev.alt].visible = false; }
+      if (ev.alt) { actor().visible = true; ALT[ev.alt].visible = false; }
       event = null;
       nextEventAt = t + rand(...CONFIG.eventEvery);
     }
@@ -764,7 +895,7 @@ function frame() {
   /* ---- планировщик ---- */
   if (started && !reduceMotion) {
     const solo = event && EVENTS[event.name].solo;
-    if (!gesture && !action && !solo && t > nextGestureAt) startGesture();
+    if (!gesture && !action && !solo && current.body === 'ghostface' && t > nextGestureAt) startGesture();
     if (!event && t > nextSwapAt) { swapVariant(); nextSwapAt = t + rand(...CONFIG.swapEvery); }
     if (!event && !action && t > nextEventAt) startEvent();
   }
@@ -805,15 +936,26 @@ function frame() {
   const ty = isTouch ? Math.sin(t * 0.33) * 0.3 : mouse.y;
   look.x += (tx - look.x) * Math.min(1, dt * 5);
   look.y += (ty - look.y) * Math.min(1, dt * 5);
-  head.rotation.set(look.y * 0.32 * pose.look + pose.hx, look.x * 0.55 * pose.look + pose.hy + evt.headSpin, pose.hz);
-  head.scale.setScalar(evt.headScale);
-  char.rotation.set(evt.rx, look.x * 0.18 + (mobile ? 0 : -0.25) + pose.yaw + evt.yaw, evt.rz);
-  char.scale.setScalar(evt.scale);
+  const breathe = reduceMotion ? 0 : 1;
+  if (current.body === 'ghostface') {
+    head.rotation.set(look.y * 0.32 * pose.look + pose.hx, look.x * 0.55 * pose.look + pose.hy + evt.headSpin, pose.hz);
+    head.scale.setScalar(evt.headScale);
+    char.rotation.set(evt.rx, look.x * 0.18 + (mobile ? 0 : -0.25) + pose.yaw + evt.yaw, evt.rz);
+    char.scale.setScalar(evt.scale);
+    char.position.y = Math.sin(t * 1.4) * 0.015 * breathe + pose.by + evt.y;
+    char.position.z = pose.bz + evt.z;
+  } else {
+    const h = actor(), u = h.userData;
+    HUMAN_ANIM[current.body](h, reduceMotion ? 0 : t, dt);
+    if (u.punchT >= 0) { u.punchT += dt; const e = bell(u.punchT / 0.4); u.arms[1].rotation.x = -1.7 * e; u.arms[1].rotation.z = -0.2 * e; u.torso.rotation.y = -0.3 * e; if (u.punchT > 0.4) { u.punchT = -1; u.torso.rotation.y = 0; } }
+    u.head.rotation.x = look.y * 0.3; u.head.rotation.y = look.x * 0.5 + evt.headSpin;
+    u.head.scale.setScalar(evt.headScale);
+    h.rotation.set(evt.rx, look.x * 0.18 + (mobile ? 0 : -0.25) + evt.yaw, evt.rz);
+    h.scale.setScalar(evt.scale);
+    h.position.x = char.position.x; h.position.y += evt.y; h.position.z = evt.z;
+  }
 
   /* ---- дыхание ---- */
-  const breathe = reduceMotion ? 0 : 1;
-  char.position.y = Math.sin(t * 1.4) * 0.015 * breathe + pose.by + evt.y;
-  char.position.z = pose.bz + evt.z;
   shoulders.scale.y = 0.4 + Math.sin(t * 1.4) * 0.012 * breathe;
   armL.pivot.rotation.set(pose.lx, pose.ly, pose.lz + Math.sin(t * 0.9) * 0.03 * breathe);
   armR.pivot.rotation.set(pose.rx + Math.sin(t * 1.1) * 0.04 * breathe, pose.ry, pose.rz);
@@ -873,6 +1015,7 @@ addEventListener('keydown', (e) => {
   if (e.key === 's') swapVariant();
   if (e.key === 'w') swapVariant('weapon');
   if (e.key === 'e') startEvent();
+  if (e.key === 'b') swapVariant('body');
 });
 
 function glitchName() {
