@@ -1,0 +1,184 @@
+:root {
+  --bg: #070709;
+  --ink: #e9e2cf;        /* цвет маски */
+  --ink-dim: #8b8677;
+  --blood: #b3161f;
+  --blood-hi: #e0333c;
+  --line: rgba(233, 226, 207, .14);
+  --font-px: "Press Start 2P", "Courier New", monospace;
+  --font-ui: "Pixelify Sans", "Press Start 2P", monospace;
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  overflow: hidden;
+  -webkit-font-smoothing: none;
+  image-rendering: pixelated;
+  cursor: crosshair;
+}
+a { color: inherit; text-decoration: none; }
+::selection { background: var(--blood); color: #fff; }
+
+/* ---------- canvas ---------- */
+#gl {
+  position: fixed; inset: 0;
+  width: 100vw; height: 100vh;
+  display: block;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+/* ---------- CRT ---------- */
+.crt-scan {
+  position: fixed; inset: 0; pointer-events: none; z-index: 5;
+  background:
+    repeating-linear-gradient(0deg, rgba(0,0,0,.28) 0 1px, transparent 1px 3px);
+  mix-blend-mode: multiply;
+  opacity: .8;
+}
+.crt-vignette {
+  position: fixed; inset: 0; pointer-events: none; z-index: 5;
+  background: radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,.75) 100%);
+}
+
+/* ---------- boot ---------- */
+.boot {
+  position: fixed; inset: 0; z-index: 20;
+  background: #000;
+  display: grid; place-items: center;
+  font-family: var(--font-px);
+  transition: opacity .5s steps(6);
+}
+.boot.out { opacity: 0; pointer-events: none; }
+.boot-inner { text-align: center; }
+.boot-logo {
+  font-size: clamp(22px, 5vw, 44px);
+  letter-spacing: .1em;
+  color: var(--ink);
+  text-shadow: 3px 3px 0 var(--blood);
+  animation: bootin 1.2s steps(8) both;
+}
+.boot-logo span { color: var(--blood-hi); }
+.boot-sub { margin-top: 18px; font-size: 9px; color: var(--ink-dim); letter-spacing: .12em; }
+.boot-bar {
+  width: min(320px, 70vw); height: 12px; margin: 26px auto 12px;
+  border: 2px solid var(--ink); padding: 2px;
+}
+.boot-bar i { display: block; height: 100%; width: 0; background: var(--ink); }
+.boot-status { font-size: 9px; color: var(--ink-dim); min-height: 1.4em; }
+.boot-start {
+  margin-top: 26px;
+  font: inherit; font-size: 12px;
+  background: none; border: 0; color: var(--ink);
+  cursor: pointer; padding: 10px 14px;
+  animation: blink 1s steps(2) infinite;
+}
+.boot-start:hover { color: var(--blood-hi); }
+@keyframes bootin { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+/* ---------- UI ---------- */
+.ui {
+  position: fixed; inset: 0; z-index: 10;
+  display: flex; flex-direction: column; justify-content: space-between;
+  padding: clamp(20px, 5vw, 56px);
+  pointer-events: none;
+  opacity: 0; transition: opacity .6s steps(8);
+}
+.ui.in { opacity: 1; }
+.ui > * { pointer-events: auto; }
+
+.hero { max-width: 520px; }
+.tag {
+  font-family: var(--font-px);
+  font-size: 9px; letter-spacing: .08em;
+  color: var(--blood-hi);
+  min-height: 1.4em;
+  white-space: pre-wrap;
+}
+.name {
+  font-family: var(--font-px);
+  font-size: clamp(26px, 6vw, 58px);
+  line-height: 1.05;
+  margin: 14px 0 12px;
+  color: var(--ink);
+  position: relative;
+  text-shadow: 4px 4px 0 #000;
+}
+/* глитч: два слоя-копии со сдвигом */
+.name::before, .name::after {
+  content: attr(data-text);
+  position: absolute; left: 0; top: 0;
+  text-shadow: none; opacity: 0;
+  pointer-events: none;
+}
+.name::before { color: var(--blood-hi); }
+.name::after  { color: #3b6cff; }
+.name.glitch::before { animation: gl1 .35s steps(3) 1 forwards; }
+.name.glitch::after  { animation: gl2 .35s steps(3) 1 forwards; }
+@keyframes gl1 { 0%{opacity:1;transform:translate(-4px,2px);clip-path:inset(0 0 55% 0)} 50%{opacity:1;transform:translate(4px,-2px);clip-path:inset(40% 0 20% 0)} 99%{opacity:1} 100%{transform:none;opacity:0} }
+@keyframes gl2 { 0%{opacity:1;transform:translate(4px,-1px);clip-path:inset(60% 0 0 0)} 50%{opacity:1;transform:translate(-3px,2px);clip-path:inset(10% 0 70% 0)} 99%{opacity:1} 100%{transform:none;opacity:0} }
+
+.about { margin: 0; font-size: 18px; color: var(--ink-dim); }
+
+/* ---------- menu ---------- */
+.menu {
+  display: flex; flex-direction: column; gap: 6px;
+  width: min(420px, 100%);
+  align-self: flex-end;
+}
+.item {
+  display: grid; grid-template-columns: 16px 110px 1fr;
+  align-items: center; gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid transparent;
+  font-size: 18px;
+  transition: transform .08s steps(2), background .08s steps(2);
+  opacity: 0; transform: translateX(16px);
+}
+.item.in { animation: itemin .25s steps(4) forwards; }
+@keyframes itemin { to { opacity: 1; transform: none; } }
+.item .cur { font-family: var(--font-px); font-size: 9px; color: var(--blood-hi); visibility: hidden; }
+.item .lbl { font-family: var(--font-px); font-size: 9px; color: var(--ink-dim); letter-spacing: .08em; }
+.item .val { color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.item:hover, .item:focus-visible, .item.sel {
+  outline: none;
+  border-color: var(--line);
+  background: rgba(233, 226, 207, .05);
+  transform: translateX(-4px);
+}
+.item:hover .cur, .item:focus-visible .cur, .item.sel .cur { visibility: visible; animation: blink .8s steps(2) infinite; }
+.item:hover .val, .item:focus-visible .val, .item.sel .val { color: #fff; }
+.item:active { transform: translate(-3px, 1px); }
+
+/* ---------- misc ---------- */
+.foot { font-size: 12px; color: var(--ink-dim); font-family: var(--font-px); font-size: 8px; letter-spacing: .1em; }
+.hint {
+  position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%);
+  z-index: 10; font-size: 12px; color: var(--ink-dim);
+  opacity: 0; transition: opacity .6s steps(6); pointer-events: none;
+}
+.hint.in { opacity: .8; }
+.blink { animation: blink 1s steps(2) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+.nojs { position: fixed; inset: auto 0 40% 0; text-align: center; z-index: 30; }
+
+/* ---------- mobile ---------- */
+@media (max-width: 720px) {
+  .ui { padding: 18px; justify-content: flex-start; gap: 0; }
+  .hero { max-width: 100%; }
+  .name { font-size: clamp(22px, 8vw, 34px); }
+  .about { font-size: 16px; }
+  .menu { align-self: stretch; width: 100%; margin-top: auto; margin-bottom: 26px; }
+  .item { grid-template-columns: 12px 84px 1fr; font-size: 16px; padding: 9px 10px; }
+  .foot { display: none; }
+  .hint { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .blink, .boot-start, .item .cur { animation: none !important; }
+}

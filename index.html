@@ -3,89 +3,53 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>zondaxxx</title>
-<meta name="description" content="Zondaxxx — Junior FullStack Developer. Проекты и контакты.">
-<style>
-  :root {
-    color-scheme: light dark;
-    --bg: #fafafa;
-    --fg: #1a1a1a;
-    --muted: #6b6b6b;
-    --line: #e2e2e2;
-    --accent: #1a1a1a;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #111;
-      --fg: #ececec;
-      --muted: #8a8a8a;
-      --line: #2a2a2a;
-      --accent: #ececec;
-    }
-  }
-  * { box-sizing: border-box; }
-  html { background: var(--bg); }
-  body {
-    margin: 0 auto;
-    max-width: 600px;
-    padding: 12vh 1.5rem 6rem;
-    color: var(--fg);
-    font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    -webkit-font-smoothing: antialiased;
-  }
-  a { color: var(--accent); text-decoration: none; border-bottom: 1px solid var(--line); }
-  a:hover { border-bottom-color: var(--accent); }
-  header { display: flex; align-items: center; gap: 1.25rem; margin-bottom: 3rem; }
-  #avatar {
-    width: 72px; height: 72px; border-radius: 50%;
-    background: var(--line); flex: none; object-fit: cover;
-  }
-  h1 { font-size: 1.35rem; font-weight: 600; margin: 0 0 .15rem; letter-spacing: -.01em; }
-  #bio { margin: 0; color: var(--muted); }
-  section { margin-bottom: 2.75rem; }
-  h2 {
-    font-size: .75rem; font-weight: 600; text-transform: uppercase;
-    letter-spacing: .12em; color: var(--muted); margin: 0 0 1rem;
-  }
-  ul { list-style: none; margin: 0; padding: 0; }
-  #contacts li { display: flex; gap: 1rem; padding: .35rem 0; }
-  #contacts .k { color: var(--muted); width: 6.5rem; flex: none; }
-  #repos li { padding: .75rem 0; border-top: 1px solid var(--line); }
-  #repos li:last-child { border-bottom: 1px solid var(--line); }
-  #repos .d { color: var(--muted); font-size: .95rem; margin: .1rem 0 .2rem; }
-  #repos .m { color: var(--muted); font-size: .8rem; }
-  #repos .m span + span::before { content: " · "; }
-  footer { margin-top: 4rem; color: var(--muted); font-size: .8rem; }
-  .muted { color: var(--muted); }
-</style>
+<title>ZONDAXXX</title>
+<meta name="description" content="Визитка. Ghostface в стиле PS1.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Pixelify+Sans:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' shape-rendering='crispEdges'%3E%3Crect width='16' height='16' fill='%23000'/%3E%3Cpath fill='%23eee6d2' d='M5 2h6v1h1v2h1v7h-1v2h-1v1H5v-1H4v-2H3V5h1V3h1z'/%3E%3Cpath fill='%23000' d='M5 5h2v2H5zM9 5h2v2H9zM7 9h2v4H7z'/%3E%3C/svg%3E">
 </head>
 <body>
 
-<header>
-  <img id="avatar" alt="" src="https://avatars.githubusercontent.com/u/86350995?v=4">
-  <div>
-    <h1 id="name">Zondaxxx</h1>
-    <p id="bio">Junior FullStack Developer</p>
+<!-- 3D: PS1 Ghostface -->
+<canvas id="gl" aria-hidden="true"></canvas>
+
+<!-- CRT overlays -->
+<div class="crt-scan" aria-hidden="true"></div>
+<div class="crt-vignette" aria-hidden="true"></div>
+
+<!-- Boot screen -->
+<div id="boot" class="boot">
+  <div class="boot-inner">
+    <div class="boot-logo">GHOST<span>FACE</span></div>
+    <div class="boot-sub">MEMORY CARD (PS1/SLOT 1) &middot; OK</div>
+    <div class="boot-bar"><i id="boot-fill"></i></div>
+    <div class="boot-status" id="boot-status">NOW LOADING&hellip;</div>
+    <button class="boot-start" id="boot-start" hidden>PRESS START</button>
   </div>
-</header>
+</div>
 
-<section>
-  <h2>Контакты</h2>
-  <ul id="contacts"></ul>
-</section>
+<!-- Content -->
+<main class="ui" id="ui">
+  <header class="hero">
+    <div class="tag" id="tag">&gt; WHAT'S YOUR FAVORITE SCARY MOVIE?</div>
+    <h1 class="name" id="name" data-text="ZONDAXXX">ZONDAXXX</h1>
+    <p class="about" id="about">разработчик · сети · железо</p>
+  </header>
 
-<section>
-  <h2>Проекты</h2>
-  <ul id="repos"><li class="muted">Загружаю с GitHub…</li></ul>
-</section>
+  <nav class="menu" id="menu" aria-label="Контакты"></nav>
 
-<footer>
-  Написано на <a href="https://github.com/samgozman/YoptaScript">YoptaScript</a> ·
-  <a href="app.ys">исходник</a>
-</footer>
+  <footer class="foot">
+    <span id="year"></span> &middot; low-poly &middot; 320&times;240 &middot; <span class="blink">_</span>
+  </footer>
+</main>
 
-<!-- Скрипт на YoptaScript. Транспилер подключается ПОСЛЕ него: он ищет такие теги при загрузке. -->
-<script type="text/x-yoptascript" src="app.ys"></script>
-<script src="yopta.min.js"></script>
+<div class="hint" id="hint" aria-hidden="true">мышь: посмотреть &middot; клик: удар</div>
+
+<noscript><p class="nojs">Включи JavaScript, тут 3D.</p></noscript>
+
+<script type="module" src="main.js"></script>
 </body>
 </html>
