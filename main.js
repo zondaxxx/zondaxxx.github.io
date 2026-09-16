@@ -17,10 +17,16 @@ const CONFIG = {
   ps1Short: 240,
   // сила дрожания вершин (1 = сетка пикселей, >1 грубее)
   jitter: 1.6,
+  // жесты: пауза между ними, сек
+  gestureEvery: [4, 9],
+  // смена модели (оружие / маска / балахон): пауза, сек
+  swapEvery: [18, 34],
 };
 
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const isTouch = matchMedia('(pointer: coarse)').matches;
+const rand = (a, b) => a + Math.random() * (b - a);
+const pick = (arr, not) => { let v; do v = arr[Math.floor(Math.random() * arr.length)]; while (arr.length > 1 && v === not); return v; };
 
 /* =========================================================
    Текстуры (рисуем в canvas — никаких ассетов)
@@ -54,60 +60,73 @@ function noise(g, w, h, base, amp, seed = 1) {
   g.putImageData(img, 0, 0);
 }
 
-// Маска Ghostface (прозрачный фон → alpha-discard)
-const maskTex = canvasTex(64, 96, (g, w, h) => {
-  g.clearRect(0, 0, w, h);
-  // тень/обводка
-  g.fillStyle = '#9c9581';
-  ellipseFace(g, 32, 50, 24, 41);
-  // лицо
-  g.fillStyle = '#ece5d1';
-  ellipseFace(g, 32, 48, 22, 39);
-  // блик
-  g.fillStyle = '#f7f2e3';
-  g.beginPath(); g.ellipse(26, 30, 6, 11, 0, 0, Math.PI * 2); g.fill();
-  // глаза — вытянутые капли, «грустные»
-  g.fillStyle = '#050505';
-  drop(g, 22, 33, 5.5, 11, -0.35);
-  drop(g, 42, 33, 5.5, 11, 0.35);
-  // нос
-  g.beginPath(); g.moveTo(32, 46); g.lineTo(28.5, 56); g.lineTo(35.5, 56); g.closePath(); g.fill();
-  // рот — длинный крик
-  g.beginPath();
-  g.moveTo(32, 58);
-  g.bezierCurveTo(40, 60, 42, 76, 32, 86);
-  g.bezierCurveTo(22, 76, 24, 60, 32, 58);
-  g.fill();
-  // серые тени вокруг рта/глаз
-  g.strokeStyle = 'rgba(80,75,60,.55)'; g.lineWidth = 1.5;
-  g.beginPath(); g.moveTo(32, 58); g.bezierCurveTo(41, 60, 43, 76, 32, 87); g.stroke();
-  function ellipseFace(g, cx, cy, rx, ry) {
+// Маска Ghostface (прозрачный фон → alpha-discard). variant: classic | bloody | dark
+function maskTexture(variant) {
+  return canvasTex(64, 96, (g, w, h) => {
+    const dark = variant === 'dark';
+    g.clearRect(0, 0, w, h);
+    g.fillStyle = dark ? '#3a3a40' : '#9c9581';
+    ellipseFace(g, 32, 50, 24, 41);
+    g.fillStyle = dark ? '#0b0b0e' : '#ece5d1';
+    ellipseFace(g, 32, 48, 22, 39);
+    if (!dark) { g.fillStyle = '#f7f2e3'; g.beginPath(); g.ellipse(26, 30, 6, 11, 0, 0, Math.PI * 2); g.fill(); }
+    g.fillStyle = dark ? '#f2eee0' : '#050505';
+    drop(g, 22, 33, 5.5, 11, -0.35);
+    drop(g, 42, 33, 5.5, 11, 0.35);
+    g.beginPath(); g.moveTo(32, 46); g.lineTo(28.5, 56); g.lineTo(35.5, 56); g.closePath(); g.fill();
     g.beginPath();
-    g.moveTo(cx, cy - ry);
-    g.bezierCurveTo(cx + rx * 1.15, cy - ry, cx + rx * 1.05, cy + ry * 0.55, cx, cy + ry);
-    g.bezierCurveTo(cx - rx * 1.05, cy + ry * 0.55, cx - rx * 1.15, cy - ry, cx, cy - ry);
+    g.moveTo(32, 58);
+    g.bezierCurveTo(40, 60, 42, 76, 32, 86);
+    g.bezierCurveTo(22, 76, 24, 60, 32, 58);
     g.fill();
-  }
-  function drop(g, x, y, rx, ry, rot) {
-    g.save(); g.translate(x, y); g.rotate(rot);
-    g.beginPath();
-    g.moveTo(0, -ry);
-    g.bezierCurveTo(rx * 1.4, -ry * 0.4, rx * 1.1, ry, 0, ry);
-    g.bezierCurveTo(-rx * 1.1, ry, -rx * 1.4, -ry * 0.4, 0, -ry);
-    g.fill(); g.restore();
-  }
-});
+    g.strokeStyle = dark ? 'rgba(255,255,255,.25)' : 'rgba(80,75,60,.55)'; g.lineWidth = 1.5;
+    g.beginPath(); g.moveTo(32, 58); g.bezierCurveTo(41, 60, 43, 76, 32, 87); g.stroke();
+    if (variant === 'bloody') {
+      g.fillStyle = '#8e0f16';
+      // подтёки из глаз
+      g.fillRect(20, 40, 2, 14); g.fillRect(23, 42, 1, 8); g.fillRect(43, 41, 2, 18); g.fillRect(41, 44, 1, 6);
+      // брызги
+      [[12, 22], [48, 18], [52, 60], [10, 58], [36, 12], [16, 70]].forEach(([x, y]) => {
+        g.fillRect(x, y, 3, 3); g.fillRect(x + 3, y + 1, 1, 1); g.fillRect(x - 1, y + 3, 1, 2);
+      });
+      g.fillStyle = '#b3161f';
+      g.fillRect(46, 30, 4, 2); g.fillRect(49, 32, 2, 9);
+    }
+    function ellipseFace(g, cx, cy, rx, ry) {
+      g.beginPath();
+      g.moveTo(cx, cy - ry);
+      g.bezierCurveTo(cx + rx * 1.15, cy - ry, cx + rx * 1.05, cy + ry * 0.55, cx, cy + ry);
+      g.bezierCurveTo(cx - rx * 1.05, cy + ry * 0.55, cx - rx * 1.15, cy - ry, cx, cy - ry);
+      g.fill();
+    }
+    function drop(g, x, y, rx, ry, rot) {
+      g.save(); g.translate(x, y); g.rotate(rot);
+      g.beginPath();
+      g.moveTo(0, -ry);
+      g.bezierCurveTo(rx * 1.4, -ry * 0.4, rx * 1.1, ry, 0, ry);
+      g.bezierCurveTo(-rx * 1.1, ry, -rx * 1.4, -ry * 0.4, 0, -ry);
+      g.fill(); g.restore();
+    }
+  });
+}
+const MASKS = { classic: maskTexture('classic'), bloody: maskTexture('bloody'), dark: maskTexture('dark') };
 
-// Чёрная ткань с шумом и складками
-const clothTex = canvasTex(32, 32, (g, w, h) => {
-  noise(g, w, h, [22, 21, 25], 26, 7);
-  g.fillStyle = 'rgba(0,0,0,.35)';
-  for (let x = 3; x < w; x += 9) g.fillRect(x, 0, 2, h);
-  g.fillStyle = 'rgba(70,68,80,.25)';
-  for (let x = 6; x < w; x += 9) g.fillRect(x, 0, 1, h);
-});
+// Ткань с шумом и складками
+function clothTexture(base, seed) {
+  return canvasTex(32, 32, (g, w, h) => {
+    noise(g, w, h, base, 26, seed);
+    g.fillStyle = 'rgba(0,0,0,.35)';
+    for (let x = 3; x < w; x += 9) g.fillRect(x, 0, 2, h);
+    g.fillStyle = 'rgba(255,255,255,.08)';
+    for (let x = 6; x < w; x += 9) g.fillRect(x, 0, 1, h);
+  });
+}
+const CLOTHS = {
+  black: clothTexture([22, 21, 25], 7),
+  blood: clothTexture([74, 12, 18], 9),
+  bone: clothTexture([150, 144, 132], 13),
+};
 
-// Плитка пола
 const floorTex = canvasTex(32, 32, (g, w, h) => {
   noise(g, w, h, [46, 50, 52], 22, 3);
   g.fillStyle = '#17181c';
@@ -116,17 +135,36 @@ const floorTex = canvasTex(32, 32, (g, w, h) => {
   g.fillRect(14, 16, 6, 1); g.fillRect(20, 8, 1, 7); g.fillRect(6, 24, 9, 1);
 }, 24);
 
-// Металл ножа
 const metalTex = canvasTex(8, 32, (g, w, h) => {
   const gr = g.createLinearGradient(0, 0, w, 0);
   gr.addColorStop(0, '#6b6f78'); gr.addColorStop(0.45, '#e6eaf0'); gr.addColorStop(0.55, '#f4f7fb'); gr.addColorStop(1, '#585c66');
   g.fillStyle = gr; g.fillRect(0, 0, w, h);
 });
-
+const woodTex = canvasTex(16, 16, (g, w, h) => {
+  noise(g, w, h, [122, 70, 32], 44, 21);
+  g.fillStyle = 'rgba(0,0,0,.3)'; g.fillRect(0, 4, w, 1); g.fillRect(0, 11, w, 1);
+});
+const gunTex = canvasTex(16, 16, (g, w, h) => { noise(g, w, h, [50, 52, 58], 22, 5); });
+const flashTex = canvasTex(16, 16, (g, w, h) => {
+  g.clearRect(0, 0, w, h);
+  g.fillStyle = '#ffd35a';
+  g.beginPath();
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2, r = i % 2 ? 3 : 8;
+    g.lineTo(8 + Math.cos(a) * r, 8 + Math.sin(a) * r);
+  }
+  g.closePath(); g.fill();
+  g.fillStyle = '#fff6d0'; g.fillRect(6, 6, 4, 4);
+});
+const phoneTex = canvasTex(8, 16, (g, w, h) => {
+  g.fillStyle = '#101014'; g.fillRect(0, 0, w, h);
+  g.fillStyle = '#7fb6a0'; g.fillRect(1, 2, w - 2, h - 5);
+  g.fillStyle = '#28302c'; g.fillRect(2, 4, 4, 1); g.fillRect(2, 6, 3, 1);
+});
 const flatTex = canvasTex(2, 2, (g) => { g.fillStyle = '#fff'; g.fillRect(0, 0, 2, 2); });
 
 /* =========================================================
-   PS1-материал: снап вершин + аффинные UV + гуро + туман
+   PS1-материал: снап вершин + аффинные UV + гуро + туман + глитч
    ========================================================= */
 const FOG = new THREE.Color('#070709');
 const shared = {
@@ -135,19 +173,27 @@ const shared = {
   uFog: { value: FOG },
   uFogNear: { value: 5 },
   uFogFar: { value: 24 },
+  uTime: { value: 0 },
+  uGlitch: { value: 0 },
 };
 
 const VERT = /* glsl */`
   uniform vec2 uSnap;
   uniform vec3 uLight;
+  uniform float uTime, uGlitch;
   varying vec3 vUvW;
   varying float vLight;
   varying float vDepth;
+  float hash(vec3 p){ return fract(sin(dot(p, vec3(12.9898, 78.233, 37.719))) * 43758.5453); }
   void main() {
     vec4 mv = modelViewMatrix * vec4(position, 1.0);
     vec4 clip = projectionMatrix * mv;
-    // снап на сетку низкого разрешения — фирменное дрожание PS1
     vec2 ndc = clip.xy / clip.w;
+    if (uGlitch > 0.0) {
+      float h = hash(position + floor(uTime * 24.0));
+      ndc += (vec2(h, fract(h * 7.31)) - 0.5) * uGlitch * 0.3;
+    }
+    // снап на сетку низкого разрешения — фирменное дрожание PS1
     ndc = floor(ndc * uSnap) / uSnap;
     clip.xy = ndc * clip.w;
     vec3 n = normalize(normalMatrix * normal);
@@ -165,6 +211,7 @@ const FRAG = /* glsl */`
   uniform vec3 uFog;
   uniform float uFogNear, uFogFar;
   uniform float uAlphaTest;
+  uniform float uEmissive;
   varying vec3 vUvW;
   varying float vLight;
   varying float vDepth;
@@ -172,32 +219,36 @@ const FRAG = /* glsl */`
     vec2 uv = vUvW.xy / vUvW.z;
     vec4 t = texture2D(uMap, uv);
     if (t.a < uAlphaTest) discard;
-    vec3 c = t.rgb * uColor * vLight;
+    vec3 c = t.rgb * uColor * mix(vLight, 1.0, uEmissive);
     float f = smoothstep(uFogNear, uFogFar, vDepth);
     c = mix(c, uFog, f);
     gl_FragColor = vec4(c, 1.0);
   }
 `;
 function ps1(map, color = '#ffffff', opts = {}) {
-  const m = new THREE.ShaderMaterial({
+  return new THREE.ShaderMaterial({
     vertexShader: VERT, fragmentShader: FRAG,
     uniforms: {
       ...shared,
       uMap: { value: map },
       uColor: { value: new THREE.Color(color) },
       uAlphaTest: { value: opts.alphaTest ?? 0.0 },
+      uEmissive: { value: opts.emissive ?? 0.0 },
     },
     side: opts.side ?? THREE.FrontSide,
   });
-  return m;
 }
 const MAT = {
-  cloth: ps1(clothTex, '#ffffff'),
-  clothDS: ps1(clothTex, '#ffffff', { side: THREE.DoubleSide }),
+  cloth: ps1(CLOTHS.black),
+  clothDS: ps1(CLOTHS.black, '#ffffff', { side: THREE.DoubleSide }),
   black: ps1(flatTex, '#050506'),
-  mask: ps1(maskTex, '#ffffff', { alphaTest: 0.5, side: THREE.DoubleSide }),
-  metal: ps1(metalTex, '#ffffff'),
-  floor: ps1(floorTex, '#ffffff'),
+  mask: ps1(MASKS.classic, '#ffffff', { alphaTest: 0.5, side: THREE.DoubleSide }),
+  metal: ps1(metalTex),
+  wood: ps1(woodTex),
+  gun: ps1(gunTex),
+  flash: ps1(flashTex, '#ffffff', { alphaTest: 0.5, side: THREE.DoubleSide, emissive: 1 }),
+  phone: ps1(phoneTex, '#ffffff', { emissive: 0.6 }),
+  floor: ps1(floorTex),
   mount: ps1(flatTex, '#141a33'),
 };
 
@@ -216,7 +267,6 @@ const scene = new THREE.Scene();
 scene.background = FOG;
 const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 60);
 
-// пол
 const floor = new THREE.Mesh(new THREE.PlaneGeometry(48, 48, 12, 12), MAT.floor);
 floor.rotation.x = -Math.PI / 2;
 scene.add(floor);
@@ -240,10 +290,8 @@ scene.add(floor);
 const char = new THREE.Group();
 scene.add(char);
 
-// балахон
 const robeGeo = new THREE.CylinderGeometry(0.42, 0.8, 1.72, 9, 4);
 {
-  // рваный подол
   const p = robeGeo.attributes.position;
   let s = 5; const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
   for (let i = 0; i < p.count; i++) {
@@ -259,13 +307,11 @@ const robe = new THREE.Mesh(robeGeo, MAT.cloth);
 robe.position.y = 0.86;
 char.add(robe);
 
-// плечи
 const shoulders = new THREE.Mesh(new THREE.SphereGeometry(0.5, 8, 5), MAT.cloth);
 shoulders.scale.set(1, 0.4, 0.78);
 shoulders.position.y = 1.68;
 char.add(shoulders);
 
-// голова
 const head = new THREE.Group();
 head.position.y = 2.2;
 char.add(head);
@@ -281,20 +327,17 @@ const hood = new THREE.Mesh(
 hood.scale.set(1, 1.25, 1.05);
 hood.position.set(0, 0.07, -0.04);
 head.add(hood);
-// острие капюшона
 const tip = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.35, 6), MAT.cloth);
 tip.position.set(0, 0.62, -0.12);
 tip.rotation.x = -0.5;
 head.add(tip);
 
-// руки
 function arm(side) {
   const pivot = new THREE.Group();
   pivot.position.set(0.44 * side, 1.62, 0);
   const geo = new THREE.CylinderGeometry(0.11, 0.15, 0.78, 6);
   geo.translate(0, -0.39, 0);
-  const sleeve = new THREE.Mesh(geo, MAT.cloth);
-  pivot.add(sleeve);
+  pivot.add(new THREE.Mesh(geo, MAT.cloth));
   const hand = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.15, 0.14), MAT.black);
   hand.position.y = -0.82;
   pivot.add(hand);
@@ -303,12 +346,11 @@ function arm(side) {
 }
 const armL = arm(1);
 const armR = arm(-1);
-armL.pivot.rotation.set(0.12, 0, 0.28);
-const ARM_R_BASE = { x: -1.35, z: -0.25 };
-armR.pivot.rotation.set(ARM_R_BASE.x, 0, ARM_R_BASE.z);
 
-// нож
+/* ---------- Пропсы в правой руке (forward = -y, up = +z) ---------- */
+const PROPS = {};
 {
+  // нож
   const knife = new THREE.Group();
   const handle = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.2, 0.06), MAT.black);
   const guard = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.025, 0.05), MAT.metal);
@@ -316,7 +358,7 @@ armR.pivot.rotation.set(ARM_R_BASE.x, 0, ARM_R_BASE.z);
   const bladeGeo = new THREE.BoxGeometry(0.045, 0.6, 0.012);
   {
     const p = bladeGeo.attributes.position;
-    for (let i = 0; i < p.count; i++) if (p.getY(i) < 0) p.setX(i, p.getX(i) * 0.15); // сужение к острию
+    for (let i = 0; i < p.count; i++) if (p.getY(i) < 0) p.setX(i, p.getX(i) * 0.15);
     bladeGeo.computeVertexNormals();
   }
   const blade = new THREE.Mesh(bladeGeo, MAT.metal);
@@ -324,11 +366,56 @@ armR.pivot.rotation.set(ARM_R_BASE.x, 0, ARM_R_BASE.z);
   knife.add(handle, guard, blade);
   knife.position.set(0, -0.82, 0.02);
   knife.rotation.set(0.15, 0, 0);
-  armR.pivot.add(knife);
+  PROPS.knife = knife;
+
+  // AK — как на референсе. Строим в «оружейном» пространстве (z вперёд, y вверх), потом поворачиваем
+  const gun = new THREE.Group();
+  const add = (geo, mat, x, y, z, rx = 0) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.rotation.x = rx; gun.add(m); return m; };
+  add(new THREE.BoxGeometry(0.07, 0.09, 0.42), MAT.gun, 0, 0.06, 0.15);                    // ствольная коробка
+  add(new THREE.BoxGeometry(0.06, 0.07, 0.22), MAT.wood, 0, 0.05, 0.42);                   // цевьё
+  add(new THREE.CylinderGeometry(0.018, 0.018, 0.4, 6), MAT.gun, 0, 0.085, 0.6, Math.PI / 2); // ствол
+  add(new THREE.CylinderGeometry(0.012, 0.012, 0.3, 5), MAT.gun, 0, 0.115, 0.5, Math.PI / 2); // газовая трубка
+  add(new THREE.BoxGeometry(0.05, 0.2, 0.08), MAT.gun, 0, -0.08, 0.2, 0.35);               // магазин
+  add(new THREE.BoxGeometry(0.05, 0.08, 0.3), MAT.wood, 0, 0.04, -0.28);                   // приклад
+  add(new THREE.BoxGeometry(0.05, 0.12, 0.05), MAT.wood, 0, -0.05, 0.0, -0.3);             // рукоять
+  const flash = new THREE.Group();
+  [0, Math.PI / 2].forEach((ry) => { const f = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 0.4), MAT.flash); f.rotation.y = ry; flash.add(f); });
+  flash.position.set(0, 0.085, 0.86);
+  flash.visible = false;
+  gun.add(flash);
+  gun.rotation.set(Math.PI / 2, 1.15, 0);   // поперёк тела, стволом влево-вперёд
+  gun.position.set(0, -0.82, 0.06);
+  PROPS.ak = gun;
+  PROPS.ak.flash = flash;
+
+  // телефон
+  const phone = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.13, 0.02), MAT.phone);
+  phone.position.set(-0.03, -0.86, 0.08);
+  phone.rotation.set(0.3, 0.2, 0.3);
+  PROPS.phone = phone;
+
+  for (const k in PROPS) { PROPS[k].visible = false; armR.pivot.add(PROPS[k]); }
 }
 
 /* =========================================================
-   Пост-обработка: низкое разрешение + дизеринг
+   Варианты модели
+   ========================================================= */
+const VARIANTS = {
+  weapon: ['knife', 'ak', 'phone', 'none'],
+  mask: ['classic', 'bloody', 'dark'],
+  robe: ['black', 'blood', 'bone'],
+};
+const current = { weapon: 'knife', mask: 'classic', robe: 'black' };
+function applyVariant() {
+  for (const k in PROPS) PROPS[k].visible = (k === current.weapon);
+  MAT.mask.uniforms.uMap.value = MASKS[current.mask];
+  MAT.cloth.uniforms.uMap.value = CLOTHS[current.robe];
+  MAT.clothDS.uniforms.uMap.value = CLOTHS[current.robe];
+}
+applyVariant();
+
+/* =========================================================
+   Пост-обработка: низкое разрешение + дизеринг + глитч
    ========================================================= */
 const rt = new THREE.WebGLRenderTarget(320, 240, {
   minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, depthBuffer: true,
@@ -336,21 +423,39 @@ const rt = new THREE.WebGLRenderTarget(320, 240, {
 const postScene = new THREE.Scene();
 const postCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
 const postMat = new THREE.ShaderMaterial({
-  uniforms: { tDiffuse: { value: rt.texture }, uRes: { value: new THREE.Vector2(320, 240) }, uTime: { value: 0 } },
+  uniforms: { tDiffuse: { value: rt.texture }, uRes: { value: new THREE.Vector2(320, 240) }, uTime: shared.uTime, uGlitch: shared.uGlitch },
   vertexShader: /* glsl */`
     varying vec2 vUv;
     void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }`,
   fragmentShader: /* glsl */`
-    uniform sampler2D tDiffuse; uniform vec2 uRes; uniform float uTime;
+    uniform sampler2D tDiffuse; uniform vec2 uRes; uniform float uTime, uGlitch;
     varying vec2 vUv;
     float d2(vec2 p){ return mod(2.0*mod(p.x,2.0) + 3.0*mod(p.y,2.0), 4.0); }
     float bayer(vec2 p){ p = floor(p); return (4.0*d2(mod(p,2.0)) + d2(floor(p/2.0)) + 0.5) / 16.0; }
+    float hash(float n){ return fract(sin(n) * 43758.5453); }
     void main(){
-      vec2 px = floor(vUv * uRes);
-      vec3 c = texture2D(tDiffuse, (px + 0.5) / uRes).rgb;
-      float d = bayer(px) - 0.5;
-      // 5 бит на канал + упорядоченный дизеринг
-      c = floor(c * 31.0 + d * 0.9 + 0.5) / 31.0;
+      vec2 uv = vUv;
+      vec3 c;
+      if (uGlitch > 0.0) {
+        float line = floor(uv.y * uRes.y / 4.0);
+        float r = hash(line + floor(uTime * 20.0));
+        if (r < uGlitch * 0.5) uv.x += (r - 0.25) * 0.3 * uGlitch;
+        vec2 px = floor(uv * uRes);
+        float sh = uGlitch * 3.0 / uRes.x;
+        c.r = texture2D(tDiffuse, (px + 0.5) / uRes + vec2(sh, 0.0)).r;
+        c.g = texture2D(tDiffuse, (px + 0.5) / uRes).g;
+        c.b = texture2D(tDiffuse, (px + 0.5) / uRes - vec2(sh, 0.0)).b;
+        float d = bayer(px) - 0.5;
+        c = floor(c * 31.0 + d * 0.9 + 0.5) / 31.0;
+        // редкие белые полосы
+        if (hash(line * 3.1 + floor(uTime * 30.0)) > 0.985) c = vec3(0.9);
+      } else {
+        vec2 px = floor(uv * uRes);
+        c = texture2D(tDiffuse, (px + 0.5) / uRes).rgb;
+        float d = bayer(px) - 0.5;
+        // 5 бит на канал + упорядоченный дизеринг
+        c = floor(c * 31.0 + d * 0.9 + 0.5) / 31.0;
+      }
       gl_FragColor = vec4(c, 1.0);
     }`,
   depthTest: false, depthWrite: false,
@@ -375,71 +480,178 @@ function resize() {
   renderer.setSize(W, H, false);
   camera.aspect = aspect;
   camera.updateProjectionMatrix();
-  // персонаж справа на десктопе, по центру и дальше на мобиле
   char.position.x = mobile ? 0 : 1.0;
   camera.position.set(mobile ? 0 : 0.35, 1.5, mobile ? 6.4 : 4.6);
 }
 
 /* =========================================================
-   Анимация
+   Позы, жесты, действия
    ========================================================= */
+// поза = углы рук + добавки к голове/телу. Текущая плавно догоняет целевую.
+const P0 = () => ({ lx: 0.12, ly: 0, lz: 0.28, rx: -1.35, ry: 0, rz: -0.25, hx: 0, hy: 0, hz: 0, by: 0, bz: 0, yaw: 0, look: 1 });
+const pose = P0();
+
+// базовая поза зависит от того, что в руке
+const BASE = {
+  knife: { rx: -1.35, rz: -0.25, lx: 0.12, lz: 0.28 },
+  ak:    { rx: -1.2, rz: -0.15, lx: -1.0, lz: -0.6 },
+  phone: { rx: -2.55, rz: -0.15, lx: 0.12, lz: 0.28, hz: 0.18, hy: -0.15 },
+  none:  { rx: 0.12, rz: -0.28, lx: 0.12, lz: 0.28 },
+};
+
+// жесты: fn(k, T) пишет в T (k = 0..1 прогресс). dur в секундах
+const bell = (k) => Math.sin(Math.PI * Math.min(1, Math.max(0, k)));       // 0→1→0
+const ease = (k) => k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+const GESTURES = {
+  wave:   { dur: 2.4, fn: (k, T) => { const e = bell(k); T.lz = 0.28 + e * 2.5 + Math.sin(k * Math.PI * 7) * 0.35 * e; T.hz = 0.15 * e; } },
+  shrug:  { dur: 1.8, fn: (k, T) => { const e = bell(k); T.lz = 0.28 + 0.75 * e; T.rz = T.rz - 0.7 * e; T.lx = -0.4 * e; T.rx = T.rx * (1 - e) - 0.4 * e; T.hz = 0.22 * e; T.by = 0.04 * e; } },
+  look:   { dur: 2.8, fn: (k, T) => { T.look = 0; T.hy = Math.sin(k * Math.PI * 2) * 0.9; T.hx = 0.05; } },
+  inspect:{ dur: 2.6, fn: (k, T) => { const e = bell(k); T.rx = T.rx * (1 - e) - 2.15 * e; T.rz = T.rz * (1 - e) + 0.4 * e; T.hx = 0.35 * e; T.hy = -0.25 * e; T.look = 1 - e; } },
+  point:  { dur: 1.8, fn: (k, T) => { const e = bell(k); T.rx = T.rx * (1 - e) - 1.62 * e; T.rz = T.rz * (1 - e) - 0.05 * e; T.hx = -0.1 * e; } },
+  nod:    { dur: 1.6, fn: (k, T) => { T.hx = Math.sin(k * Math.PI * 4) * 0.22 * bell(k); } },
+  no:     { dur: 1.6, fn: (k, T) => { T.hy = Math.sin(k * Math.PI * 5) * 0.35 * bell(k); T.look = 0.3; } },
+  tpose:  { dur: 2.2, fn: (k, T) => { const e = bell(k); T.lz = 0.28 + (1.57 - 0.28) * e; T.rz = T.rz * (1 - e) - 1.57 * e; T.lx = T.lx * (1 - e); T.rx = T.rx * (1 - e); T.hx = 0; } },
+  spin:   { dur: 1.3, fn: (k, T) => { T.yaw = ease(k) * Math.PI * 2; T.by = 0.06 * bell(k); T.look = 0; } },
+  crouch: { dur: 2.0, fn: (k, T) => { const e = bell(k); T.by = -0.22 * e; T.hx = -0.2 * e; T.lz = 0.28 + 0.3 * e; } },
+  dance:  { dur: 3.0, fn: (k, T) => { const e = bell(k); const w = k * Math.PI * 6; T.by = Math.abs(Math.sin(w)) * 0.06 * e; T.hz = Math.sin(w) * 0.2 * e; T.lz = 0.28 + (0.6 + Math.sin(w) * 0.5) * e; T.rz = T.rz - (0.6 - Math.sin(w) * 0.5) * e; T.yaw = Math.sin(w / 2) * 0.35 * e; } },
+};
+// жесты, которые не сочетаются с тем, что в руке
+const GESTURE_BLOCK = { ak: ['inspect', 'point', 'tpose', 'dance'], phone: ['inspect', 'point', 'tpose', 'shrug', 'dance'] };
+
+let gesture = null;        // { name, t }
+let action = null;         // { name, t, shot } — по клику
+let nextGestureAt = 1e9;
+let nextSwapAt = 1e9;
+let glitchUntil = 0, swapAt = 0, pendingSwap = null;
+let camShake = 0;
+
+function startGesture(name) {
+  if (reduceMotion) return;
+  const block = GESTURE_BLOCK[current.weapon] || [];
+  if (!name || block.includes(name)) name = pick(Object.keys(GESTURES).filter((n) => !block.includes(n)), gesture?.name);
+  gesture = { name, t: 0 };
+}
+
+// клик: действие зависит от оружия
+function attack() {
+  if (action) return;
+  const map = { knife: 'stab', ak: 'fire', phone: 'hangup', none: 'punch' };
+  action = { name: map[current.weapon], t: 0, shot: -1 };
+  glitchName();
+}
+const ACTIONS = {
+  stab:   { dur: 0.5, fn: (k, T) => { const e = (k < 0.35 ? k / 0.35 : Math.max(0, 1 - (k - 0.35) / 0.65)) ** 2; T.rx = -1.35 - 0.95 * e; T.rz = -0.25 - 0.35 * e; T.hx = -0.25 * e; T.bz = 0.25 * e; } },
+  fire:   { dur: 0.55, fn: (k, T, A) => {
+    const shot = Math.floor(k * 4), ph = (k * 4) % 1, rec = Math.max(0, 1 - ph * 3);
+    T.rx = -1.2 + 0.12 * rec; T.lx = -1.0 + 0.1 * rec; T.hx = 0.08 * rec; T.bz = -0.06 * rec;
+    PROPS.ak.flash.visible = ph < 0.35 && shot < 3;
+    PROPS.ak.flash.rotation.z = shot * 1.1;
+    if (shot !== A.shot && shot < 3) { A.shot = shot; camShake = 0.07; }
+  } },
+  hangup: { dur: 1.2, fn: (k, T) => { const e = bell(k); T.rx = -2.55 + 1.3 * e; T.rz = -0.15 - 0.5 * e; T.hz = 0.18 - 0.4 * e; T.hx = 0.2 * e; } },
+  punch:  { dur: 0.45, fn: (k, T) => { const e = bell(k) ** 1.5; T.rx = 0.12 - 1.75 * e; T.rz = -0.28 + 0.2 * e; T.bz = 0.2 * e; T.hx = -0.15 * e; } },
+};
+
+function swapVariant(kind, value) {
+  if (pendingSwap) return;
+  kind = kind || pick(Object.keys(VARIANTS));
+  value = VARIANTS[kind].includes(value) ? value : pick(VARIANTS[kind], current[kind]);
+  pendingSwap = { kind, value };
+  const now = shared.uTime.value;
+  glitchUntil = now + 0.45;
+  swapAt = now + 0.2;
+  glitchName();
+}
+const LOG_NAMES = {
+  weapon: { knife: 'KNIFE', ak: 'AK47', phone: 'PHONE', none: 'HANDS' },
+  mask: { classic: 'MASK_A', bloody: 'MASK_BLOOD', dark: 'MASK_NEG' },
+  robe: { black: 'ROBE_BLK', blood: 'ROBE_RED', bone: 'ROBE_BONE' },
+};
+function logSwap() {
+  const el = document.getElementById('log');
+  if (!el) return;
+  const nm = `GHOSTFACE_${LOG_NAMES.mask[current.mask]}_${LOG_NAMES.robe[current.robe]}_${LOG_NAMES.weapon[current.weapon]}.TMD`;
+  typewriter(el, `> LOADED ${nm}`, 14);
+}
+
 const mouse = new THREE.Vector2(0, 0);
 const look = new THREE.Vector2(0, 0);
-addEventListener('pointermove', (e) => {
-  mouse.set((e.clientX / W) * 2 - 1, (e.clientY / H) * 2 - 1);
-});
-let stabT = -1;
+addEventListener('pointermove', (e) => { mouse.set((e.clientX / W) * 2 - 1, (e.clientY / H) * 2 - 1); });
 addEventListener('pointerdown', (e) => {
-  if (e.target.closest('.item, button, a')) return;
-  stabT = 0;
-  glitchName();
+  if (!started || e.target.closest('.item, button, a')) return;
+  attack();
+});
+addEventListener('dblclick', (e) => {
+  if (!started || e.target.closest('.item, button, a')) return;
+  swapVariant();
 });
 
 const clock = new THREE.Clock();
 let started = false;
+// консольные рычаги: GF.swap('weapon','ak'), GF.gesture('wave'), GF.attack()
+window.GF = { swap: swapVariant, gesture: startGesture, attack, current, props: PROPS, gestures: Object.keys(GESTURES), variants: VARIANTS };
 function frame() {
   requestAnimationFrame(frame);
   const dt = Math.min(clock.getDelta(), 0.05);
   const t = clock.elapsedTime;
+  shared.uTime.value = t;
 
-  // взгляд за курсором (на тачах — сам оглядывается)
+  /* ---- планировщик ---- */
+  if (started && !reduceMotion) {
+    if (!gesture && !action && t > nextGestureAt) startGesture();
+    if (t > nextSwapAt) { swapVariant(); nextSwapAt = t + rand(...CONFIG.swapEvery); }
+  }
+  if (pendingSwap && t >= swapAt) {
+    current[pendingSwap.kind] = pendingSwap.value;
+    applyVariant();
+    logSwap();
+    pendingSwap = null;
+    if (gesture && (GESTURE_BLOCK[current.weapon] || []).includes(gesture.name)) gesture = null;
+  }
+  shared.uGlitch.value = t < glitchUntil ? 0.6 + 0.4 * Math.sin(t * 60) : 0;
+
+  /* ---- целевая поза ---- */
+  const T = P0();
+  Object.assign(T, BASE[current.weapon]);
+  if (gesture) {
+    gesture.t += dt;
+    const g = GESTURES[gesture.name];
+    g.fn(Math.min(1, gesture.t / g.dur), T);
+    if (gesture.t >= g.dur) { gesture = null; nextGestureAt = t + rand(...CONFIG.gestureEvery); }
+  }
+  if (action) {
+    action.t += dt;
+    const a = ACTIONS[action.name];
+    a.fn(Math.min(1, action.t / a.dur), T, action);
+    if (action.t >= a.dur) { action = null; PROPS.ak.flash.visible = false; }
+  }
+  // действия резкие, жесты плавные
+  const rate = action ? 22 : 7;
+  for (const k in pose) pose[k] += (T[k] - pose[k]) * Math.min(1, dt * rate);
+
+  /* ---- взгляд за курсором (на тачах — сам оглядывается) ---- */
   const tx = isTouch ? Math.sin(t * 0.5) * 0.5 : mouse.x;
   const ty = isTouch ? Math.sin(t * 0.33) * 0.3 : mouse.y;
   look.x += (tx - look.x) * Math.min(1, dt * 5);
   look.y += (ty - look.y) * Math.min(1, dt * 5);
-  head.rotation.y = look.x * 0.55;
-  head.rotation.x = look.y * 0.32;
-  char.rotation.y = look.x * 0.18 + (mobile ? 0 : -0.25);
+  head.rotation.set(look.y * 0.32 * pose.look + pose.hx, look.x * 0.55 * pose.look + pose.hy, pose.hz);
+  char.rotation.y = look.x * 0.18 + (mobile ? 0 : -0.25) + pose.yaw;
 
-  // дыхание / покачивание
+  /* ---- дыхание ---- */
   const breathe = reduceMotion ? 0 : 1;
-  char.position.y = Math.sin(t * 1.4) * 0.015 * breathe;
+  char.position.y = Math.sin(t * 1.4) * 0.015 * breathe + pose.by;
+  char.position.z = pose.bz;
   shoulders.scale.y = 0.4 + Math.sin(t * 1.4) * 0.012 * breathe;
-  armL.pivot.rotation.z = 0.28 + Math.sin(t * 0.9) * 0.03 * breathe;
+  armL.pivot.rotation.set(pose.lx, pose.ly, pose.lz + Math.sin(t * 0.9) * 0.03 * breathe);
+  armR.pivot.rotation.set(pose.rx + Math.sin(t * 1.1) * 0.04 * breathe, pose.ry, pose.rz);
 
-  // удар ножом
-  let ax = ARM_R_BASE.x + Math.sin(t * 1.1) * 0.04 * breathe;
-  let az = ARM_R_BASE.z;
-  if (stabT >= 0) {
-    stabT += dt / 0.5;
-    const k = stabT < 0.35 ? stabT / 0.35 : Math.max(0, 1 - (stabT - 0.35) / 0.65);
-    const e = k * k;
-    ax = ARM_R_BASE.x - 0.95 * e + 0.55 * (stabT < 0.35 ? 0 : 0) ;
-    az = ARM_R_BASE.z - 0.35 * e;
-    head.rotation.x -= 0.25 * e;
-    char.position.z = 0.25 * e;
-    if (stabT >= 1) { stabT = -1; char.position.z = 0; }
-  }
-  armR.pivot.rotation.x = ax;
-  armR.pivot.rotation.z = az;
-
-  // камера чуть плывёт
+  /* ---- камера ---- */
   const camDrift = reduceMotion ? 0 : 1;
+  camShake = Math.max(0, camShake - dt * 0.4);
   camera.position.x += ((mobile ? 0 : 0.35) + Math.sin(t * 0.25) * 0.12 * camDrift - camera.position.x) * 0.05;
-  camera.position.y = 1.5 + Math.sin(t * 0.4) * 0.05 * camDrift;
-  camera.lookAt(char.position.x, 1.3, 0);
+  camera.position.y = 1.5 + Math.sin(t * 0.4) * 0.05 * camDrift + (Math.random() - 0.5) * camShake;
+  camera.lookAt(char.position.x + (Math.random() - 0.5) * camShake, 1.3, 0);
 
-  postMat.uniforms.uTime.value = t;
   renderer.setRenderTarget(rt);
   renderer.render(scene, camera);
   renderer.setRenderTarget(null);
@@ -483,9 +695,12 @@ addEventListener('keydown', (e) => {
     items[selIdx].focus();
   }
   if (e.key === 'Enter' && selIdx >= 0) items[selIdx].click();
+  // секретки: G — жест, S — смена чего-нибудь, W — смена оружия
+  if (e.key === 'g') startGesture();
+  if (e.key === 's') swapVariant();
+  if (e.key === 'w') swapVariant('weapon');
 });
 
-let glitchTimer;
 function glitchName() {
   const n = $('name');
   n.classList.remove('glitch');
@@ -494,15 +709,16 @@ function glitchName() {
   n.addEventListener('animationend', () => n.classList.remove('glitch'), { once: true });
 }
 function scheduleGlitch() {
-  glitchTimer = setTimeout(() => { if (!reduceMotion) glitchName(); scheduleGlitch(); }, 3500 + Math.random() * 4000);
+  setTimeout(() => { if (!reduceMotion) glitchName(); scheduleGlitch(); }, 6000 + Math.random() * 6000);
 }
 
 function typewriter(el, text, speed = 38) {
+  if (el._tw) clearTimeout(el._tw);
   el.textContent = '';
   let i = 0;
   const tick = () => {
     el.textContent = text.slice(0, ++i) + (i < text.length ? '█' : '');
-    if (i < text.length) setTimeout(tick, speed + (text[i - 1] === ' ' ? 60 : 0));
+    if (i < text.length) el._tw = setTimeout(tick, speed + (text[i - 1] === ' ' ? 60 : 0));
   };
   tick();
 }
@@ -535,6 +751,8 @@ function boot() {
 function start() {
   if (started) return;
   started = true;
+  nextGestureAt = clock.elapsedTime + rand(2.5, 5);
+  nextSwapAt = clock.elapsedTime + rand(...CONFIG.swapEvery);
   $('boot').classList.add('out');
   $('ui').classList.add('in');
   $('hint').classList.add('in');
