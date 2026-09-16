@@ -31,7 +31,7 @@ GitHub Pages: залить папку как есть (есть `.nojekyll`). Л
 ## Жесты и варианты
 
 Сами по себе: жест каждые `gestureEvery` секунд (wave, shrug, look, inspect, point, nod, no, tpose, spin, crouch, dance), смена модели каждые `swapEvery` секунд.
-Варианты: оружие knife/ak/phone/none, маска classic/bloody/dark, балахон black/blood/bone, тело ghostface/cj/steve/statham (CJ из GTA SA, Стив из Minecraft, Стэтхэм — боксовые гуманоиды со своей idle-анимацией; клавиша `B`). Всё в `VARIANTS`/`GESTURES` в `main.js`.
+Варианты: оружие knife/ak/phone/none, маска classic/bloody/dark, балахон black/blood/bone, тело ghostface/cj/steve/statham/lara (CJ из GTA SA, Стив из Minecraft, Стэтхэм, Лара Крофт 1996 с треугольной грудью — боксовые гуманоиды со своей idle-анимацией; клавиша `B`). Всё в `VARIANTS`/`GESTURES` в `main.js`.
 В консоли есть `GF.swap('weapon','ak')`, `GF.gesture('wave')`, `GF.attack()`, `GF.event('cow')`.
 
 ## Ивенты

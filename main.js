@@ -544,6 +544,39 @@ const HUMANS = {};
     torso: suit, arm: flat('#141416'), hand: flat(tp.s), leg: flat('#111114'), shoe: flat('#0a0a0a'), neck: 0.04,
   });
 
+  // ---- Лара Крофт (1996): треугольные сиськи, коса, два пистолета
+  const lp = { s: '#d9a884', h: '#4a2a14', k: '#141414', w: '#f2ece2', b: '#5a3a24', l: '#a8463c', d: '#b8865f' };
+  const laraFace = pixTex(16, 16, [
+    'hhhhhhhhhhhhhhhh', 'hhhhhhhhhhhhhhhh', 'hhsssssssssssshh', 'hsssssssssssssh'.padEnd(16, 'h'),
+    'ssbbbbssssbbbbss', 'ssssssssssssssss', 'sswkksssssskkwss', 'ssssssssssssssss',
+    'sssssssddsssssss', 'ssssssssssssssss', 'sssssllllllsssss', 'ssssssssssssssss',
+    'ssssssssssssssss', 'ssssssssssssssss', 'ssssssssssssssss', 'ssssssssssssssss',
+  ], lp);
+  const laraSide = pixTex(16, 16, ['h'.repeat(16), 'h'.repeat(16), 'h'.repeat(16), 'hhhhhhhhhhhhssss'].concat(Array(12).fill('s'.repeat(16))), lp);
+  const teal = flat('#1f9a8c'), brown = flat(lp.b), gun = flat('#2a2a2e');
+  const lara = humanoid({
+    dims: { head: [0.34, 0.4, 0.34], torso: [0.5, 0.7, 0.26], arm: [0.15, 0.7, 0.15], leg: [0.2, 0.9, 0.2] },
+    face: laraFace, side: laraSide, top: flat(lp.h), skin: flat(lp.s),
+    torso: teal, arm: flat(lp.s), hand: flat(lp.s), leg: flat(lp.s), shoe: brown, neck: 0.04,
+  });
+  {
+    const u = lara.userData, T = u.torso;
+    const add = (parent, geo, mat, x, y, z, rx = 0) => { const m = new THREE.Mesh(geo, mat.isTexture ? ps1(mat) : mat); m.position.set(x, y, z); m.rotation.x = rx; parent.add(m); return m; };
+    // грудь — две четырёхгранные пирамиды вперёд
+    [-1, 1].forEach((sd) => { const c = add(T, new THREE.ConeGeometry(0.17, 0.42, 4), teal, 0.14 * sd, 0.16, 0.13 + 0.17, Math.PI / 2); c.rotation.z = Math.PI / 4; });
+    // шорты + ремень
+    add(T, new THREE.BoxGeometry(0.54, 0.22, 0.3), brown, 0, -0.42, 0);
+    add(T, new THREE.BoxGeometry(0.56, 0.05, 0.32), flat('#2e1c10'), 0, -0.33, 0);
+    // кобуры на бёдрах
+    u.legs.forEach((leg, i) => add(leg, new THREE.BoxGeometry(0.07, 0.16, 0.12), flat('#3a2416'), (i ? 1 : -1) * 0.13, -0.28, 0.02));
+    // пистолеты в руках
+    u.arms.forEach((arm) => add(arm, new THREE.BoxGeometry(0.05, 0.08, 0.22), gun, 0, -0.62, 0.1));
+    // коса
+    const braid = new THREE.Group(); braid.position.set(0, 0.32, -0.17); u.head.add(braid); u.braid = braid;
+    for (let i = 0; i < 6; i++) add(braid, new THREE.BoxGeometry(0.07 - i * 0.004, 0.13, 0.07 - i * 0.004), flat(lp.h), 0, -0.05 - i * 0.12, -0.02 - i * 0.015);
+  }
+  HUMANS.lara = lara;
+
   for (const k in HUMANS) { HUMANS[k].visible = false; scene.add(HUMANS[k]); }
 }
 function humanoid(o) {
@@ -597,6 +630,20 @@ const HUMAN_ANIM = {
     h.position.y = j < 0.25 ? Math.sin(j * Math.PI * 4) * 0.45 : 0;
     u.head.rotation.z = 0;
   },
+  lara(h, t, dt) { // стойка с пистолетами, отдача, бэкфлип
+    const u = h.userData;
+    const kick0 = bell(((t * 1.6) % 1) / 0.35), kick1 = bell((((t * 1.6) + 0.5) % 1) / 0.35);
+    u.arms[0].rotation.set(-0.9 - 0.35 * kick0 + Math.sin(t * 2) * 0.04, 0, -0.5);
+    u.arms[1].rotation.set(-0.9 - 0.35 * kick1 + Math.sin(t * 2 + 1) * 0.04, 0, 0.5);
+    u.legs[0].rotation.set(0.18, 0, 0.1); u.legs[1].rotation.set(-0.12, 0, -0.1);
+    u.braid.rotation.x = Math.sin(t * 3) * 0.2;
+    const c = (t % 4.2) / 4.2, k = c < 0.17 ? c / 0.17 : 0;
+    u.rx = c < 0.17 ? -Math.PI * 2 * k : 0;
+    // крутимся вокруг центра тела (~1.0), а не вокруг ног
+    h.position.y = Math.sin(k * Math.PI) * 0.7 + (1 - Math.cos(u.rx)) * 1.0;
+    u.dz = Math.sin(u.rx) * 1.0;
+    u.torso.rotation.z = 0;
+  },
   statham(h, t, dt) { // стоит, руки скрещены, хрустит шеей, медленно наступает
     const u = h.userData;
     u.arms[0].rotation.set(-1.25, 0, 0.55); u.arms[1].rotation.set(-1.25, 0, -0.55);
@@ -615,7 +662,7 @@ const VARIANTS = {
   weapon: ['knife', 'ak', 'phone', 'none'],
   mask: ['classic', 'bloody', 'dark'],
   robe: ['black', 'blood', 'bone'],
-  body: ['ghostface', 'cj', 'steve', 'statham'],
+  body: ['ghostface', 'cj', 'steve', 'statham', 'lara'],
 };
 const current = { weapon: 'knife', mask: 'classic', robe: 'black', body: 'ghostface' };
 const ACTORS = { ghostface: char, ...HUMANS };
@@ -778,7 +825,7 @@ function swapVariant(kind, value) {
   if (pendingSwap) return;
   // если на сцене не Ghostface — чаще меняем тело обратно; тело само по себе выпадает реже
   if (!kind) kind = current.body !== 'ghostface' ? (Math.random() < 0.7 ? 'body' : pick(['weapon', 'mask', 'robe'])) : pick(['weapon', 'mask', 'robe', 'body', 'weapon', 'mask', 'robe']);
-  if (!VARIANTS[kind].includes(value)) value = kind === 'body' ? pick(['ghostface', 'ghostface', 'cj', 'steve', 'statham'].filter((v) => v !== current.body)) : pick(VARIANTS[kind], current[kind]);
+  if (!VARIANTS[kind].includes(value)) value = kind === 'body' ? pick(['ghostface', 'ghostface', 'cj', 'steve', 'statham', 'lara'].filter((v) => v !== current.body)) : pick(VARIANTS[kind], current[kind]);
   pendingSwap = { kind, value };
   const now = shared.uTime.value;
   glitchUntil = now + 0.45;
@@ -793,7 +840,7 @@ const LOG_NAMES = {
 function logSwap() {
   const el = document.getElementById('log');
   if (!el) return;
-  const bodies = { cj: 'CJ.DFF', steve: 'STEVE.PNG', statham: 'STATHAM.TMD' };
+  const bodies = { cj: 'CJ.DFF', steve: 'STEVE.PNG', statham: 'STATHAM.TMD', lara: 'LARA.PHD' };
   const nm = current.body !== 'ghostface' ? bodies[current.body] : `GHOSTFACE_${LOG_NAMES.mask[current.mask]}_${LOG_NAMES.robe[current.robe]}_${LOG_NAMES.weapon[current.weapon]}.TMD`;
   typewriter(el, `> LOADED ${nm}`, 14);
 }
@@ -950,9 +997,9 @@ function frame() {
     if (u.punchT >= 0) { u.punchT += dt; const e = bell(u.punchT / 0.4); u.arms[1].rotation.x = -1.7 * e; u.arms[1].rotation.z = -0.2 * e; u.torso.rotation.y = -0.3 * e; if (u.punchT > 0.4) { u.punchT = -1; u.torso.rotation.y = 0; } }
     u.head.rotation.x = look.y * 0.3; u.head.rotation.y = look.x * 0.5 + evt.headSpin;
     u.head.scale.setScalar(evt.headScale);
-    h.rotation.set(evt.rx, look.x * 0.18 + (mobile ? 0 : -0.25) + evt.yaw, evt.rz);
+    h.rotation.set(evt.rx + (u.rx || 0), look.x * 0.18 + (mobile ? 0 : -0.25) + evt.yaw, evt.rz);
     h.scale.setScalar(evt.scale);
-    h.position.x = char.position.x; h.position.y += evt.y; h.position.z = evt.z;
+    h.position.x = char.position.x; h.position.y += evt.y; h.position.z = evt.z + (u.dz || 0);
   }
 
   /* ---- дыхание ---- */
